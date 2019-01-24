@@ -2,7 +2,9 @@
 Orbiter Mesh Tools is a [Blender](https://www.blender.org/) add-on for generating [Orbiter](http://orbit.medphys.ucl.ac.uk/index.html) mesh files.  It will also, optionally, generate a C++ source file for the mesh being created.
 
 ## Compatibility:
-Blender 2.79
+Blender 2.79.
+
+This version will not work with Blender 2.80.
 
 
 ## Getting Started
@@ -13,11 +15,11 @@ Blender 2.79
 - See _Resources\Simple Walkthrough.pdf_ for a quick tutorial on how to use the plugin to create and test an Orbiter mesh file.
 
 ## General Usage
-The add-on will create an Orbiter mesh file for each scene in the blend file that has the _orbiter mesh file_ option set in the Scene properties panel.  See Scene Panel below.  A single C++ file, if enabled, will be created for all scenes.
+This add-on will create an Orbiter mesh file for each scene in the blend file that has the _orbiter mesh file_ option set in the Scene properties panel.  See Scene Panel below.  A single C++ file, if enabled, will be created for all scenes.
 
-The add-on swaps the orientation ‘y’ and ‘z’ axis values when generating the mesh file.  This was done to allow a more intuitive use of the Blender view keys ([End]-front back, [Home]-top bottom, [PgDn]-left right) when modelling ‘z is horizontal’ type models in Blender, since Blender treats the X-Y plane as the ‘floor’.  The result is a standard ‘left-handed’ orientation for the Orbiter mesh.
+In Blender, _z_ is treated as the _up_ and _y_ is the _forward_ axis.  When the mesh is created the _y_ and _z_ values are swapped to match what Orbiter expects.  This was done to allow a more intuitive use of the Blender view keys ([End]-front back, [Home]-top bottom, [PgDn]-left right) when modelling _z is horizontal_ type models in Blender, since Blender treats the X-Y plane as the _floor_.  The result is a standard _left-handed_ orientation for the Orbiter mesh.
 
-The add-on will use the first material and texture defined for the object.  It will not convert any image file into a compatible .DDS format.  Blender supports .DDS textures, so the supported work flow is to place the texture files directly into Orbiter\Textures and reference them from there.  The output mesh file will then correctly reference that text file.
+The add-on will use the first material and texture defined for the object.  It will not convert any image file into a compatible .DDS format.  Blender supports .DDS textures, so the supported work flow is to place the texture files directly into Orbiter\Textures and reference them from there.  The output mesh file will then correctly reference that texture file.
 
 ## Blender Property Panels
 ### Render Panel

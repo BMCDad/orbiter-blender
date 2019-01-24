@@ -1,0 +1,96 @@
+7/14/2017 - Blender tools overhaul notes.
+Addon preferences:
+
+Global variables:
+	At script startup these are populated from known values.  The properties described below can then be tokenized.
+	{blend} - The name of the blend file without the .blend extension.
+
+Preferences provide default behavior for the addon across projects.  They can be overridden on a project level by creating a 
+<blend>.ini file where <blend> is the name of the blend file without the .blend extension.  When the script runs the <blend>.ini
+file will be read if it exists and the default prefrences will be overridden.
+
+Orbiter Mesh Folder: string : Note, this is not FILE_PATH because we will have replacable parameters {name} etc.
+	desc:	Path where the mesh output files are placed.  Can be absolute or relative.  Relative path resolves from the OrbiterPath value.
+	- \Mesh [default]
+	-[ini] MeshFolder=''
+
+Verbose builds: bool
+	desc:	If true, will write out a detailed log of the mesh build process.  The filename is always BlenderTools.log and will
+			always be in the same folder as the .blend file.
+	-false [default]
+	-[ini] Verbose='true'
+
+Build Include File: bool
+	desc:	If true an <include.h> file will be built as part of the mesh build process.
+	-false [default]
+	-[ini] BuildInclude='true'
+
+Include file name: string
+	desc:	The full path/name of the include file to build.  Relative paths are resolved from the .blend file location.
+	-$//$(blend)\\$(blend)_mesh.h [default]
+	-[ini] IncludeFilePath=''
+
+Root namespace: string
+	desc:	The outer namespace for the include file.  Scene specific entries will be in the scene namespace which can be set
+			inside the blend file.
+	- bt_mesh [default]
+	-[ini] RootNamespace=''
+
+Id name suffix: string
+	desc:	The suffix appended to an object's name when that object's id is written into the include file.
+	-Id [default]
+	-[ini] IdSuffix='_id'
+
+Position name suffix: string
+	desc:	The suffix appended to an object's name when that object's position is written into the include file.
+	-Pos [default]
+	-[ini] PositionSuffix='_position'
+
+Vertex array name suffix: string
+	desc:	The suffix appended to an object's name when that object's vertex array is written to the include file.
+	-Verts [default]
+	-[ini] VertexSuffix='_verts'
+
+Properties Panels:
+Panel section titles are all 'Orbiter Tools'
+==SCENE==
+Output Mesh File 
+[Scene.orbiter_create_mesh_file:bool:false]: Indicates if a mesh file for this scene should be created.
+
+Namespace
+[Scene.orbiter_scene_namespace:string:<scene name>]: The namespace to wrap the scene include code in.
+
+==OBJECT==
+Sort Order
+[Object.orbiter_sort_order:int:50]: Determine the order for this object in the mesh file.
+
+Mesh Flag
+[Object.orbiter_mesh_flag:int:0]: Mesh flags.  See Orbiter SDK for values.
+
+Include Position
+[Ojbect.orbiter_include_position:bool:false]:  Include the objects position as a const VECTOR3 in the include file.
+
+Include Vertex Array
+[Object.orbiter_include_vertex_array:bool:false]:  Include object vertices as an array of NTVERTEX values in the include file.
+
+==MATERIALS==
+<diffuse color:alpha> OrbSDK:  "This is the colour that is diffusely (in all directions) reflected from an illuminated surface."
+
+[Material.orbiter_ambient_color:FloatVector:<1.0>] OrbSDK "This is the colour of an unlit surface."
+[Material.orbiter_ambient_alpha:Float:1.0]
+
+<specular color:hardnes:alpha> OrbSDK: "This is the colour of light reflected by a
+polished surface into a narrow beam. The power entry specifies the width of the cone into
+which specular light is reflected. Higher values mean a narrower cone, i.e. sharper
+reflections. Typical values are around 10. If omitted, the default value for power is 0."
+
+[Material.orbiter_emit_color:FloatVector:<0.0>] OrbSDK: "This is the colour of light emitted by a glowing surface."
+[Material.orbiter_emit_alpha:Float:<1.0>]
+
+==TEXTURE==
+Is Dynamic
+[Texture.orbiter_is_dynamic:bool:false] 
+OrbSDK:
+"If a texture is to be dynamically updated during the simulation (e.g. instrument panels in
+virtual cockpits), the texture name should be followed by the flag ‘D’. Orbiter will
+decompress these textures to allow more efficient dynamic updates."

@@ -15,6 +15,27 @@
 #  All rights reserved.
 #  ***** GPL LICENSE BLOCK *****
 
+########
+# Blender 2.80 notes:
+# [meshobject].materials[0].node_tree.nodes['Image Texture'] <-- texture image
+# 2.7x
+
+# for uv_layer in mesh.tessface_uv_textures:
+#     for face in mesh.tessfaces:
+#         face_uvs = uv_layer.data[face.index]
+#         for uv in face_uvs:
+#             print(uv)
+
+# 2.8x
+
+# for uv_layer in mesh.uv_layers:
+#     for tri in mesh.loop_triangles:
+#         for loop_index in tri.loops:
+#             print(uv_layer.data[loop_index].uv)
+#
+#########
+
+
 import os
 import bpy
 import shutil
@@ -38,26 +59,22 @@ class OrbiterBuildSettings:
         self.name_pattern_location = name_pattern_location
         self.name_pattern_verts = name_pattern_verts
         self.name_pattern_id = name_pattern_id
-
-        self.log_file = build_file_path(
-            os.path.dirname(bpy.data.filepath), "BlenderTools", ".log")
-        
+        self.log_file = build_file_path(os.path.dirname(bpy.data.filepath), "BlenderTools", ".log")
         if self.verbose:
             try:
                 self.log_file = open(self.log_file, 'w')
-                print("Writing to log file: {}".format(self.log_file))
-            except FileNotFoundError:
-                print("Log file could not be opened.  Log file will not be built.")
+            except Exception as error:
+                print("Log file could not be opened.  Log file will not be built. Error: {}".format(error))
                 self.verbose = False
 
         if self.build_include_file:
             try:
                 self.include_file = open(self.include_path_file, "w")
-            except FileNotFoundError:
-                print("Build file could not be opened. Include file will not be built.")
+            except Exception as error:
+                print("Build file could not be opened. Include file will not be built. Error: {}".format(error))
                 self.build_include_file = False
-                self.log_line(
-                    "ERROR: Include file {} could not be opened!".format(self.include_path_file))
+                self.log_line("ERROR: Include file {} could not be opened!".format(self.include_path_file))
+                self.log_line("ERROR: {}".format(error))
         
     def __enter__(self):
         return self
@@ -77,31 +94,13 @@ class OrbiterBuildSettings:
     def write_to_include(self, include_text):
         if self.build_include_file:
             self.include_file.write(include_text)
-    
-        
-class Color:
-    """
-    A Color class that does no more then provide a consistent way to
-    output color to the exported file.
-    """
-    
-    r = 0
-    g = 0
-    b = 0
-    a = 0
-    
-    def __str__(self):
-        return "Color(({}, {}, {}, {}))".format(self.r, self.g, self.b, self.a)
 
-    def mesh_format(self):
-        return "{:.3f} {:.3f} {:.3f} {:.3f}".format(self.r, self.g, self.b, self.a)
-    
 
-class ExportVertex:
+class Vertex:
     """
     An Orbiter Export Vertex Class.
     
-    Conver a mesh vertex to world coordinates appropriate for the mesh file 
+    Convert a mesh vertex to world coordinates appropriate for the mesh file 
     using the world_matrix to world coordinates.
     """
     x = 0.0
@@ -114,16 +113,11 @@ class ExportVertex:
     v = None
     
     def __init__(self, vert, world_matrix):
-        w_vertex = world_matrix * vert.co
-#        w_normal = world_matrix * vert.normal
+        w_vertex = world_matrix @ vert.co       # Transform from local to world coordinates
         w_normal = vert.normal
-            
-        # swap y - z
-        self.x = w_vertex.x
+        self.x = w_vertex.x                     # Note: z : y coords swapped to better fit Orbiter orientation
         self.y = w_vertex.z
         self.z = w_vertex.y
-        
-        # swap y - z
         self.nx = w_normal.x
         self.ny = w_normal.z
         self.nz = w_normal.y
@@ -152,7 +146,6 @@ class ExportVertex:
         """Return True if both u anv v are assigned for this vertex."""
         return (self.u != None) or (self.v != None)        
 
-
     def is_uv_equal(self, u, v):
         """Return True if both params u and v are equal this vertex's u an v members."""
         return (self.u == u) and (self.v == v)
@@ -163,94 +156,32 @@ class ExportVertex:
         return result
 
         
-class Face:
+class Triangle:
     """
-    An Orbiter Export Face Class.
+    An Orbiter Export Triangle.
     
-    Provides a wrapper for a triangle face.
+    Provides a wrapper for a triangle definition.
     """
     v1 = 0
     v2 = 0
     v3 = 0
 
-    def __init__(self, v_idx_1, v_idx_2, v_idx_3):
-        self.v1 = v_idx_1
-        self.v2 = v_idx_2
-        self.v3 = v_idx_3
+    def __init__(self, v1, v2, v3):
+        self.v1 = v1                # Note: orientation reversed to match Orbiter
+        self.v2 = v3
+        self.v3 = v2
+
+    @classmethod
+    def from_dict(cls, tri_list):
+        return cls(tri_list[0], tri_list[1], tri_list[2])
+
+    @classmethod
+    def from_trimesh(cls, tri_mesh):
+        return cls(tri_mesh.vertices[0], tri_mesh.vertices[1], tri_mesh.vertices[2])
 
     def __str__(self):
         return "{} {} {}".format(self.v1, self.v2, self.v3)
     
-
-def build_triangle_faces(face):
-    """
-    Return a list of Face objects for the given Blender face.
-    
-    The Blender face may be a quad, if that is the case then
-    return an array of two Face objects, each representing
-    a triangle face.
-    """
-
-    result = []
-    
-    face1 = Face(face.vertices[0], face.vertices[2], face.vertices[1])
-    result.append(face1)
-    
-    if len(face.vertices) == 4:
-        face2 = Face(face.vertices[0], face.vertices[3], face.vertices[2])
-        result.append(face2)
-        
-    return result
-        
-
-class Material:
-    """
-    A Material class.
-    
-    Creates the appropriate material output text for a Blender material.
-    """
-    
-    diffuse = Color()
-    specular = Color()
-    specular_power = 10
-    ambient = Color()
-    emissive = Color()
-    name = None
-    
-    def __init__(self, material):
-        self.diffuse.r = material.diffuse_color.r
-        self.diffuse.g = material.diffuse_color.g
-        self.diffuse.b = material.diffuse_color.b
-        self.diffuse.a = material.alpha
-        
-        self.specular.r = material.specular_color.r
-        self.specular.g = material.specular_color.g
-        self.specular.b = material.specular_color.b
-        self.specular.a = material.specular_alpha
-        
-        self.specular_power = material.specular_hardness
-    
-        self.emissive.r = material.orbiter_emit_color.r
-        self.emissive.g = material.orbiter_emit_color.g
-        self.emissive.b = material.orbiter_emit_color.b
-        self.emissive.a = material.orbiter_emit_alpha
-    
-        self.ambient.r = material.orbiter_ambient_color.r
-        self.ambient.g = material.orbiter_ambient_color.g
-        self.ambient.b = material.orbiter_ambient_color.b
-        self.ambient.a = material.orbiter_ambient_alpha
-            
-        self.name = material.name
-
-    def __str__(self):
-        return "Material(material)"
-    
-    def mesh_format(self):
-        return "{}\n{}\n{} {}\n{}\n".format(self.diffuse.mesh_format(),
-                                       self.ambient.mesh_format(),
-                                       self.specular.mesh_format(), self.specular_power,
-                                       self.emissive.mesh_format())
-
                                        
 class MeshGroup:
     """
@@ -259,110 +190,96 @@ class MeshGroup:
     Takes a Blender mesh object and parses it to create the vertex and triangle
     lists needed for export.
     
-    If the mesh has a texture the appropriate UV coordinates are extracted.  If
-    a vertex has multiple UV coordinates then new vertices are added to account
-    for the duplicate coordinates.
-    
-    Only texture 1 of material 1 will be used for texturing.
+    Vertex data is stored in the mesh .vertices collection.  Each vertex contains
+    the position (x,y,z) data as well as the normal data for that vertex.  The
+    vertex data is in object local coordinates and must be transformed into world
+    coordinates for use in Orbiter.  The triangle data (the three vertices that make
+    up one tri-polygon) is stored in the .loop_triangles collection.  Each member of
+    that collection contains an array of three ints, which are indexes into the
+    .vertices array.
+
+    If the mesh has a texture, then we also must get the uv data for each triangle.
+    A mesh can have multiple uv maps, but for Orbiter we will only use the first
+    map located in mesh.uv_layers[0].  The uv layer has a .data collection where
+    each entry contains a uv pair.  The index into that .data collection is also
+    in the mesh.loop_triangles collection  Each triangle also has a .loops
+    collection of 3 integers, which is an index into the .data collection mentioned.
+
+    In Blender a vertex can have multiple UV mappings, but in Orbiter each vertex
+    must have its own UV mapping.  This means as we are collecting the UV data for
+    a triangle, we must see if the vertex that triangle references already has UV
+    data assigned.  If it does, we must duplicate that vertex and assign the UV
+    to that new vertex.  The two vertices will have the same location, but will
+    have different UV assignments.
     """
     
     def __init__(self, config, mesh_object, scene):
         self.name = mesh_object.name.replace(' ', '_')
         self.uv_tex_name = None
         self.uv_tex_name_path = None
-        self.material_name = None
-        self.vertices_list = {}
+        self.mat_name = None
+        self.vertices_dict = {}
         self.triangles_list = []
         self.matrix_world = mesh_object.matrix_world
         self.sort_order = mesh_object.orbiter_sort_order
         self.include_vertex_array = mesh_object.orbiter_include_vertex_array
-        self.is_dynamic = False
+        self.is_dynamic_texture = False
         self.mesh_flag = mesh_object.orbiter_mesh_flag
-
-        temp_mesh = mesh_object.to_mesh(scene, True, 'PREVIEW')
-
-        #added to support 2.62 n-gons
-        temp_mesh.update(calc_tessface=True)
         
         config.log_line("\nSTART mesh: {}".format(mesh_object.name))
 
+        # 2.81  In order to get the mesh with modifiers applied, you need
+        #       to get the dependency graph and use that to get an
+        #       evaluated instance of the mesh.  
+        deps = bpy.context.evaluated_depsgraph_get()
+        object_eval = mesh_object.evaluated_get(deps)
+        temp_mesh = object_eval.to_mesh()
+        temp_mesh.calc_loop_triangles()
         self.parse_mesh(config, temp_mesh)
-            
-        if len(temp_mesh.materials) > 0:
-            self.material_name = temp_mesh.materials[0].name
-            config.log_line("Material: {}".format(temp_mesh.materials[0].name))
+        self.mat_name = temp_mesh.materials[0].name if len(temp_mesh.materials) > 0 else None
+        object_eval.to_mesh_clear()
 
-        bpy.data.meshes.remove(temp_mesh)
-        
-        self.num_vertices = len(self.vertices_list)
+        self.num_vertices = len(self.vertices_dict)
         self.num_faces = len(self.triangles_list)
 
         config.log_line("END Mesh: {}".format(mesh_object.name))
         
     def parse_textured_mesh(self, config, mesh):
-        the_image = mesh.materials[0].texture_slots[0].texture.image
+        the_image = mesh.materials[0].node_tree.nodes['Image Texture'].image
         self.uv_tex_name_path = the_image.filepath
-
-        self.is_dynamic = mesh.materials[0].texture_slots[0].texture.orbiter_is_dynamic
+        self.is_dynamic_texture = mesh.materials[0].orbiter_is_dynamic
         self.uv_tex_name = bpy.path.basename(self.uv_tex_name_path)
-    
+
         config.log_line("group is textured.")
         config.log_line("UV texture: {}".format(self.uv_tex_name))
         config.log_line("Texture file: {}".format(the_image.name))
         config.log_line("Texture dimensions: {} x {}".format(the_image.size[0], the_image.size[1]))
-    
-        if len(mesh.tessface_uv_textures) > 0:
-            # textures[].data contains uv data by mesh face
-            for idx_mesh_face, uv_itself in enumerate(mesh.tessface_uv_textures[0].data):
-                face_uvs = uv_itself.uv1, uv_itself.uv2, uv_itself.uv3, uv_itself.uv4
-                export_faces = build_triangle_faces(mesh.tessfaces[idx_mesh_face])
-           
-                # We now enumerate the vertices for the current face.  This will
-                # give us the mesh index for the vertex as well as the face index
-                # for the vertex.  If the vertex is shared between faces then it 
-                # may have more then one UV coordinate assigned to it.  We use the
-                # mesh vertex index to keep a dictionary of vertices so we can 
-                # check if it has already been assigned a UV coordinate, if it has
-                # we create a new vertex and add it to the list.
-                for idx_face_vert, idx_mesh_vert in enumerate(mesh.tessfaces[idx_mesh_face].vertices):
-                    face_vertex_u = face_uvs[idx_face_vert].x
-                    face_vertex_v = 1 - face_uvs[idx_face_vert].y
-                    exported_vertex = self.vertices_list[idx_mesh_vert]
+
+        export_faces = []
+        for tri in mesh.loop_triangles:
+            export_tri_face = {}
+            for loop_idx in range(0, 3):        # each loop_idx is one corner of the tri-polygon
+                uv = mesh.uv_layers[0].data[tri.loops[loop_idx]].uv
+                vert_u = uv[0]
+                vert_v = 1-uv[1]
+                vert_idx = tri.vertices[loop_idx]
+                export_tri_face[loop_idx] = vert_idx
+                exp_vertex = self.vertices_dict[vert_idx]
+
+                if exp_vertex.is_uv_assigned() and not exp_vertex.is_uv_equal(vert_u, vert_v):
+                    new_vertex = Vertex(mesh.vertices[vert_idx], self.matrix_world)
+                    new_key = len(self.vertices_dict.keys())
+                    new_vertex.u = vert_u
+                    new_vertex.v = vert_v
+                    self.vertices_dict[new_key] = new_vertex
+                    export_tri_face[loop_idx] = new_key
+                else:
+                    exp_vertex.u = vert_u
+                    exp_vertex.v = vert_v
+
+            export_faces.append(Triangle.from_dict(export_tri_face))
                 
-                    if exported_vertex.is_uv_assigned():
-                        # the exported vertex already has u v
-                        # if they differ, then we need to create a new vertex
-                        # and fix up the face triangles to point to the new vertex.
-                
-                        if not exported_vertex.is_uv_equal(face_vertex_u, face_vertex_v):
-                            new_vertex = ExportVertex(mesh.vertices[idx_mesh_vert], self.matrix_world)
-                            new_key = len(self.vertices_list.keys())
-                            new_vertex.u = face_vertex_u
-                            new_vertex.v = face_vertex_v
-                            self.vertices_list[new_key] = new_vertex
-                        
-                            # We need to look through our export face list for this
-                            # face and change any faces pointing to the old vertex
-                            # to point to the new one we just added.
-                            for export_face in export_faces:
-                                if export_face.v1 == idx_mesh_vert:
-                                    export_face.v1 = new_key
-                                
-                                if export_face.v2 == idx_mesh_vert:
-                                    export_face.v2 = new_key
-                                
-                                if export_face.v3 == idx_mesh_vert:
-                                    export_face.v3 = new_key
-                    
-                    else:
-                        # The vertex does not have a u v assigned so we are good to
-                        # assign this uv to the vertex.
-                        exported_vertex.u = face_vertex_u
-                        exported_vertex.v = face_vertex_v
-    
-                self.triangles_list.extend(export_faces)
-        else:
-            config.log_line("WARNING: Mesh is assigned a texture but has no UV map.")
+        self.triangles_list.extend(export_faces)
        
     def parse_mesh(self, config, mesh):
         """
@@ -370,186 +287,184 @@ class MeshGroup:
         """
 
         config.log_line("parsing {} vertices.".format(len(mesh.vertices)))
-        
         for vertex in mesh.vertices:
-            self.vertices_list[vertex.index] = ExportVertex(vertex, self.matrix_world)
+            self.vertices_dict[vertex.index] = Vertex(vertex, self.matrix_world)
 
-        # If the mesh has a texture, we must read the faces
-        if (
-                mesh.materials and 
-                (mesh.materials[0].texture_slots[0] != None) and 
-                (mesh.materials[0].texture_slots[0].texture.type == 'IMAGE')
-           ):
+        if (mesh.uv_layers and mesh.materials and 'Image Texture' in mesh.materials[0].node_tree.nodes):
             self.parse_textured_mesh(config, mesh)
         else:
             config.log_line("group is not textured.")
-                
-            for face in mesh.tessfaces:
-                self.triangles_list.extend(build_triangle_faces(face))
+            for tri in mesh.loop_triangles:
+                self.triangles_list.append(Triangle.from_trimesh(tri))
 
-                
+
 def build_file_path(path, filename, extension):
     temppath = os.path.join(path, filename)
     fullpath = bpy.path.ensure_ext(temppath, extension)
     return bpy.path.abspath(fullpath)
-   
+
+def output_material(mesh_file, material):
+    
+    mesh_file.write(
+        "{:.3f} {:.3f} {:.3f} {:.3f}\n".format(
+            material.diffuse_color[0],
+            material.diffuse_color[1], 
+            material.diffuse_color[2], 
+            material.diffuse_color[3]))
+
+    mesh_file.write(
+        "{:.3f} {:.3f} {:.3f} {:.3f}\n".format(
+            material.orbiter_ambient_color[0],
+            material.orbiter_ambient_color[1],
+            material.orbiter_ambient_color[2],
+            material.orbiter_ambient_alpha))
+
+    mesh_file.write(
+        "{:.3f} {:.3f} {:.3f} {:.3f} {:.3f}\n".format(
+            material.specular_color[0],
+            material.specular_color[1],
+            material.specular_color[2],
+            1.0,
+            material.specular_intensity))
+
+    mesh_file.write(
+        "{:.3f} {:.3f} {:.3f} {:.3f}\n".format(
+            material.orbiter_emit_color[0],
+            material.orbiter_emit_color[1],
+            material.orbiter_emit_color[2],
+            material.orbiter_emit_alpha))
+
+def build_include(config, scene, groups, texNames):
+    """ 
+    Build include file.
+    """
+
+    if not config.build_include_file:
+        return
+
+    grp_names = [grp.name for grp in groups]
+
+    config.write_to_include("\n// Scene {}\n".format(scene.name))
+    config.write_to_include("\n  namespace {} \n  {{\n".format(scene.orbiter_scene_namespace))
+
+    for mesh_group in groups:
+        if mesh_group.include_vertex_array:
+            config.write_to_include(
+                "    const NTVERTEX {}[{}] = {{\n".format(
+                    config.name_pattern_verts.format(mesh_group.name), 
+                    mesh_group.num_vertices))
+            
+        for v_key in sorted(mesh_group.vertices_dict.keys()):
+            if mesh_group.include_vertex_array:
+                config.write_to_include(
+                    "    {{{}}}".format(
+                        mesh_group.vertices_dict[v_key].nvertex_form()))
+                if v_key < (mesh_group.num_vertices - 1):
+                    config.write_to_include(",\n")
+
+        if mesh_group.include_vertex_array:
+            config.write_to_include("    };\n")
+
+    for idx, tex in enumerate(texNames):
+        config.write_to_include(
+            "    const DWORD TXIDX_{} = {};\n".format(
+                bpy.path.clean_name(tex), (idx + 1)))
+
+    config.write_to_include('    #define {}_MESH_NAME "{}"\n\n'.format(scene.name, scene.name))
+    for idx, group in enumerate(grp_names):
+        config.write_to_include('    const UINT {} = {};\n'.format(config.name_pattern_id.format(group), idx))
+        
+    for object in scene.objects:
+        if object.orbiter_include_position:
+            ov = object.location
+            config.write_to_include('    const VECTOR3 {} = '.format(config.name_pattern_location.format(object.name)))
+            # swap y - z
+            config.write_to_include(
+                '    {{{:.4f}, {:.4f}, {:.4f}}};\n'.format(ov.x, ov.z, ov.y))
+    
+        if object.orbiter_include_quad:
+            q_mesh = object.to_mesh(preserve_all_data_layers=True)
+            if len(q_mesh.vertices) == 4:
+                q_mesh.calc_loop_triangles()
+                for vert_idx in q_mesh.vertices:
+                    ex_vert = Vertex(q_mesh.vertices[vert_idx], object.matrix_world)
+                    config.write_to_include(
+                        '    const VECTOR3 {}_QUAD_{} = '.format(object.name, vert_idx))
+                    config.write_to_include(
+                        '    {{{:.4f}, {:.4f}, {:.4f}}};\n'.format(ex_vert.x, ex_vert.z, ex_vert.y))
+
+            object.to_mesh_clear()
+
+    config.write_to_include("\n  }\n")    # close namespace
 
 def export_orbiter(config, scene):
     """
     Export scene to Orbiter mesh format.
     """
-    
-    # Make sure we have a namespace for this scene:
+
     if not scene.orbiter_scene_namespace:
         scene.orbiter_scene_namespace = scene.name
 
+    mesh_path = build_file_path(config.mesh_path, scene.name, ".msh")
+    meshes = [m for m in scene.objects if m.type == 'MESH']
+
+    config.log_line("Mesh out file: {}".format(mesh_path))
     config.log_line("Building scene: {}".format(scene.name))
-    config.write_to_include("\n// Scene {}\n".format(scene.name))
+    config.log_line("Found {} mesh object(s)".format(len(meshes)))
 
-    # Start the scene namespace:
-    config.write_to_include("\nnamespace {} \n{{\n".format(scene.orbiter_scene_namespace))
-
-    meshPath = build_file_path(config.mesh_path, scene.name, ".msh")
-    
-    config.log_line("Mesh out file: {}".format(meshPath))
-    
-    mesh_file = open(meshPath, "w")
-
-    groups = []
-    mesh_objects = [m for m in scene.objects if m.type == 'MESH']
-    
-    config.log_line("Found {} mesh object(s)".format(len(mesh_objects)))
-    
-    for mesh_object in mesh_objects:
-        groups.append(MeshGroup(config, mesh_object, scene))
-
-    # Get the material names from bpy.data.  Order here is important.  This is
-    # the order they will appear in the file and they will be referenced by
-    # index.
-    material_names = [m.name for m in bpy.data.materials]
-    
-    # Get the texture names from the group list.  This is the order they will
-    # appear in the file and be referenced by index.
-    texture_names = [mesh_group.uv_tex_name for mesh_group in groups if not mesh_group.uv_tex_name == None]
-
-    texture_names = list(set(texture_names))    # this removes dups.
-
-    mesh_file.write("MSHX1\n")
-    mesh_file.write("GROUPS {}\n".format(len(mesh_objects)))
-    
+    groups = [MeshGroup(config, m, scene) for m in meshes]
     groups.sort(key=lambda x: x.sort_order, reverse=False)
-    
-    group_order = []
-    dynamic_textures = []
+    mat_names = [m.name for m in bpy.data.materials]   # Order is important.  Orbiter will ref by index
+    tex_names = [group.uv_tex_name for group in groups if not group.uv_tex_name == None]
+    tex_names = list(set(tex_names))    # this removes dups.
+    dyn_texs = [grp.uv_tex_name for grp in groups if grp.is_dynamic_texture]
+
     config.log_line("\nWriting out groups")
+    
+    with open(mesh_path, "w") as mesh_file:
+        mesh_file.write("MSHX1\n")
+        mesh_file.write("GROUPS {}\n".format(len(meshes)))
 
-    for mesh_group in groups:
-        group_order.append(mesh_group.name)
-        
-        if mesh_group.is_dynamic:
-            dynamic_textures.append(mesh_group.uv_tex_name)
-            
-        mat_index = 0
-        if mesh_group.material_name in material_names:
-            mat_index = material_names.index(mesh_group.material_name) + 1
-            
-        tex_index = 0
-        if mesh_group.uv_tex_name in texture_names:
-            tex_index = texture_names.index(mesh_group.uv_tex_name) + 1
-            
-        config.log_line("Writing group: {}, Mat: {}, Tex: {}, Verts: {}, Faces: {}, Dynamic Texture: {}"
-            .format(
-                mesh_group.name, 
-                mat_index, 
-                tex_index, 
-                mesh_group.num_vertices, 
-                mesh_group.num_faces, 
-                mesh_group.is_dynamic))
-            
-        mesh_file.write("LABEL {}\n".format(mesh_group.name))
-        mesh_file.write("MATERIAL {}\n".format(mat_index))
-        mesh_file.write("TEXTURE {}\n".format(tex_index))
-        mesh_file.write("FLAG {}\n".format(mesh_group.mesh_flag))
-        mesh_file.write("GEOM {} {}\n".format(mesh_group.num_vertices, mesh_group.num_faces))
-        
-        if mesh_group.include_vertex_array:
-            config.write_to_include(
-                "const NTVERTEX {}[{}] = {{\n".format(
-                    config.name_pattern_verts.format(mesh_group.name), 
-                    mesh_group.num_vertices))
-            
-        for v_key in sorted(mesh_group.vertices_list.keys()):
-            mesh_file.write("{}\n".format(mesh_group.vertices_list[v_key]))
-            if mesh_group.include_vertex_array:
-                config.write_to_include(
-                    "{{{}}}".format(
-                        mesh_group.vertices_list[v_key].nvertex_form()))
-                if v_key < (mesh_group.num_vertices - 1):
-                    config.write_to_include(",\n")
+        for mesh_group in groups:
+            matIdx = mat_names.index(mesh_group.mat_name) + 1 if mesh_group.mat_name in mat_names else 0
+            texIdx = tex_names.index(mesh_group.uv_tex_name) + 1 if  mesh_group.uv_tex_name in tex_names else 0
+                
+            config.log_line("Writing group: {}, Mat: {}, Tex: {}, Verts: {}, Faces: {}, Dynamic Texture: {}"
+                .format(    mesh_group.name, 
+                            matIdx, 
+                            texIdx, 
+                            mesh_group.num_vertices, 
+                            mesh_group.num_faces, 
+                            mesh_group.is_dynamic_texture))
 
-        if mesh_group.include_vertex_array:
-            config.write_to_include("};\n")
-
-        for fl in mesh_group.triangles_list:
-            mesh_file.write("{}\n".format(fl))
+            mesh_file.write("LABEL {}\n".format(mesh_group.name))
+            mesh_file.write("MATERIAL {}\n".format(matIdx))
+            mesh_file.write("TEXTURE {}\n".format(texIdx))
+            mesh_file.write("FLAG {}\n".format(mesh_group.mesh_flag))
+            mesh_file.write("GEOM {} {}\n".format(mesh_group.num_vertices, mesh_group.num_faces))
             
-    mesh_file.write("MATERIALS {}\n".format(len(bpy.data.materials)))
-    for m in bpy.data.materials:
-        mesh_file.write("{}\n".format(m.name.replace(' ', '_')))
-        
-    for m in bpy.data.materials:
-        mesh_file.write("MATERIAL {}\n".format(m.name.replace(' ', '_')))
-        out = Material(m)
-        mesh_file.write(out.mesh_format())
+            for v_key in sorted(mesh_group.vertices_dict.keys()):
+                mesh_file.write("{}\n".format(mesh_group.vertices_dict[v_key]))
 
-    mesh_file.write("TEXTURES {}\n".format(len(texture_names)))
-    for idx, tex in enumerate(texture_names):
-        mesh_file.write("{}".format(tex))
-        if (tex in dynamic_textures):
-            mesh_file.write(" D\n")
-        else:
-            mesh_file.write("\n")
+            for fl in mesh_group.triangles_list:
+                mesh_file.write("{}\n".format(fl))
+                
+        mesh_file.write("MATERIALS {}\n".format(len(bpy.data.materials)))
+        for mName in mat_names:
+            mesh_file.write("{}\n".format(mName.replace(' ', '_')))
+            
+        for m in bpy.data.materials:
+            mesh_file.write("MATERIAL {}\n".format(m.name.replace(' ', '_')))
+            output_material(mesh_file, m)
 
-        config.write_to_include(
-            "const DWORD TXIDX_{} = {};\n".format(
-                bpy.path.clean_name(tex), (idx + 1)))
-        
+        mesh_file.write("TEXTURES {}\n".format(len(tex_names)))
+        for tex in tex_names:
+            mesh_file.write("{}".format(tex))
+            if (tex in dyn_texs):
+                mesh_file.write(" D\n")
+            else:
+                mesh_file.write("\n")
+            
     config.log_line("Done")
-
-    mesh_file.close()
-    
     config.log_line("Finished scene: {}".format(scene.name))
-
-    config.write_to_include('#define {}_MESH_NAME "{}"\n\n'.format(scene.name, scene.name))
-        
-    for idx, group in enumerate(group_order):
-        config.write_to_include('const UINT {} = {};\n'.format(config.name_pattern_id.format(group), idx))
-        
-    # Output selected objects
-    objs = scene.objects
-    vecfmt = '{{{:.4f}, {:.4f}, {:.4f}}};\n'
-    
-    for object in scene.objects:
-        if object.orbiter_include_position:
-            ov = object.location
-            config.write_to_include('const VECTOR3 {} = '.format(config.name_pattern_location.format(object.name)))
-            # swap y - z
-            config.write_to_include(
-                '{{{:.4f}, {:.4f}, {:.4f}}};\n'.format(ov.x, ov.z, ov.y))
-    
-        if object.orbiter_include_quad:
-            q_mesh = object.to_mesh(scene, True, 'PREVIEW')
-            if len(q_mesh.vertices) == 4:
-                v_face = q_mesh.tessfaces[0]
-                for vert_idx in v_face.vertices:
-                    ex_vert = ExportVertex(q_mesh.vertices[vert_idx], object.matrix_world)
-                    config.write_to_include(
-                        'const VECTOR3 {}_QUAD_{} = '.format(object.name, vert_idx))
-                    config.write_to_include(
-                        '{{{:.4f}, {:.4f}, {:.4f}}};\n'.format(ex_vert.x, ex_vert.z, ex_vert.y))
-            
-            # Don't include quad objects in mesh.
-            bpy.data.meshes.remove(q_mesh)    
-
-    # Close scene namespace
-    config.write_to_include("\n}\n")
+    build_include(config, scene, groups, tex_names)

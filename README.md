@@ -2,9 +2,7 @@
 Orbiter Mesh Tools is a [Blender](https://www.blender.org/) add-on for generating [Orbiter](http://orbit.medphys.ucl.ac.uk/index.html) mesh files.  It will also, optionally, generate a C++ source file for the mesh being created.
 
 ## Compatibility:
-Blender 2.79.
-
-This version will not work with Blender 2.80.
+Blender 2.81.
 
 
 ## Getting Started
@@ -12,17 +10,16 @@ This version will not work with Blender 2.80.
 2.	In Blender open *User Preferences* and go to the *Add Ons* tab.
 3.	Find *Orbiter Mesh Tools* and check the box to enable the add on.
 
-- See _Resources\Simple Walkthrough.pdf_ for a quick tutorial on how to use the plugin to create and test an Orbiter mesh file.
-
 ## General Usage
 This add-on will create an Orbiter mesh file for each scene in the blend file that has the _orbiter mesh file_ option set in the Scene properties panel.  See Scene Panel below.  A single C++ file, if enabled, will be created for all scenes.
 
 In Blender, _z_ is treated as the _up_ and _y_ is the _forward_ axis.  When the mesh is created the _y_ and _z_ values are swapped to match what Orbiter expects.  This was done to allow a more intuitive use of the Blender view keys ([End]-front back, [Home]-top bottom, [PgDn]-left right) when modelling _z is horizontal_ type models in Blender, since Blender treats the X-Y plane as the _floor_.  The result is a standard _left-handed_ orientation for the Orbiter mesh.
 
-The add-on will use the first material and texture defined for the object.  It will not convert any image file into a compatible .DDS format.  Blender supports .DDS textures, so the supported work flow is to place the texture files directly into Orbiter\Textures and reference them from there.  The output mesh file will then correctly reference that texture file.
+The add-on will use the first material defined for the object.  It will not convert any image file into a compatible .DDS format.  Blender supports .DDS textures, so the supported work flow is to place the texture files directly into Orbiter\Textures and reference them from there.  The output mesh file will then correctly reference that texture file.
+
 
 ## Blender Property Panels
-### Render Panel
+### Output Panel
 ***Mesh Path:*** Output folder where the generated mesh file will be written to.
 
 ***Build Include File:*** If checked, a C++ include file will be generated that defines mesh group IDs as well as other useful values (see Object Property Panel).
@@ -42,7 +39,7 @@ The add-on will use the first material and texture defined for the object.  It w
 ***Build Mesh:*** Initiates the process to build the mesh and include files as configured.  A ‘Blender Alert’ will display when the process is complete.
 
 ### Scene Panel
-***Orbiter Mesh File:*** If checked this scene will build a mesh file.
+***Orbiter Mesh File:*** If checked, this scene will build a mesh file.
 
 ***Scene Namespace:*** The namespace for values from this scene that will be written to the include file.  By default this will be the name of the scene but can be changed to whatever is convenient.
 
@@ -53,9 +50,15 @@ The add-on will use the first material and texture defined for the object.  It w
 
 ***OrbiterMeshFlag:*** Sets the Orbiter mesh flag value.  See Orbiter SDK for values.
 
-***Output Location:*** The location of the object will be output in the include file as a const VECTOR3 value.
+***Output Location:*** Output object location as a const VECTOR3 value.
 
-***Output Vertex Array:*** Will output the object vertices as an array of NTVERTEX values.
+***Output Vertex Array:*** Output the object vertices as an array of NTVERTEX values.
 
 ***Output quad:*** If the object is a plane it will output VECTOR3 values for each corner.  These can be used to setup a ‘hit’ rectangle.
 
+### Material Panel
+***Diffuse Color:*** Orbiter diffuse color.
+***Specular Color:*** Orbiter specular color.
+***Ambient Color:*** Orbiter ambient color.
+***Emit Color:*** Orbiter emmisive color.
+***Is Dynamic:*** If checked, the texture for this material will be treated by Orbiter as dynamic.

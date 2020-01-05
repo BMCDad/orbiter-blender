@@ -1,4 +1,6 @@
 # Blender Orbiter Mesh Tools
+_Version 2.0.2_
+
 Orbiter Mesh Tools is a [Blender](https://www.blender.org/) add-on for generating [Orbiter](http://orbit.medphys.ucl.ac.uk/index.html) mesh files.  It will also, optionally, generate a C++ source file for the mesh being created.
 
 ## Compatibility:
@@ -59,7 +61,17 @@ The add-on will use the first material defined for the object.  It will not conv
 
 ### Material Panel
 ***Diffuse Color:*** Orbiter diffuse color.
-***Specular Color:*** Orbiter specular color.
 ***Ambient Color:*** Orbiter ambient color.
+***Specular Color:*** Orbiter specular color.
+***Specular Power:*** Orbiter specular power.
 ***Emit Color:*** Orbiter emmisive color.
 ***Is Dynamic:*** If checked, the texture for this material will be treated by Orbiter as dynamic.
+
+### Orbiter Mesh Import
+Import an Orbiter mesh file by selecting 'File - Import - Orbiter Mesh Import' inside Blender.
+
+A new Blender scene will be created with the name of the mesh file.  Axis values are treated as explaned above, with _Y_ and _Z_ coordinates swapped.
+
+A node based material will be created for each unique Material + Texture combination found in the mesh file.
+
+Normals are imported, but this is still a work in progress.  Blender 2.81 offers better normals support, but this appears to be very poorly documented in Blender, and good examples are sparse.

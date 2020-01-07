@@ -18,6 +18,18 @@
 #   2.0.1       - Blender 2.81 support
 #   2.0.2       - Add mesh import
 
+bl_info = {
+    "name": "Orbiter Mesh Tools",
+    "author": "Blake Christensen",
+    "version": (2, 0, 2),
+    "blender": (2, 81, 0),
+    "location": "",
+    "description": "Tools for building Orbiter mesh files.",
+    "warning": "",
+    "wiki_url": "",
+    "tracker_url": "",
+    "category": "Import-Export"}
+
 import bpy
 import os
 import shutil
@@ -38,19 +50,6 @@ import time
 import traceback
 from . import orbiter_tools
 from . import import_tools
-
-
-bl_info = {
-    "name": "Orbiter Mesh Tools",
-    "author": "Blake Christensen",
-    "version": (2, 0, 2),
-    "blender": (2, 81, 0),
-    "location": "",
-    "description": "Tools for building Orbiter mesh files.",
-    "warning": "",
-    "wiki_url": "",
-    "tracker_url": "",
-    "category": "Import-Export"}
 
 if "bpy" in locals():
     import importlib

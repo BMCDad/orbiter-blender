@@ -8,10 +8,10 @@ Blender 2.81.
 
 
 ## Getting Started
-1.	Copy the io_orbiter_tools folder into the *scripts/addons* folder of your Blender installation.
+1.	Click on the 'Clone or Download' in Github and select Download ZIP.
 2.	In Blender open *User Preferences* and go to the *Add Ons* tab.
-3.	Find *Orbiter Mesh Tools* and check the box to enable the add on.
-4.  Read through the Simple Walkthrough.pdf located in the Resources folder for an exmaple of how to create and test a simple add-on for Orbiter.
+3.	Select 'Install' at the top of the Preferences window and find the orbiter-blender-master.zip file and click the 'Install Add-on' button.
+4.  Click the check box next to the add on name 'Import-Export: Orbiter Mesh Tools' to enable the add-on.
 
 ## General Usage
 This add-on will create an Orbiter mesh file for each scene in the blend file that has the _orbiter mesh file_ option set in the Scene properties panel.  See Scene Panel below.  A single C++ file, if enabled, will be created for all scenes.

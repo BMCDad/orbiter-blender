@@ -31,10 +31,12 @@ class OrbiterBuildSettings:
                  mesh_path_file=None,
                  name_pattern_location=None,
                  name_pattern_verts=None,
-                 name_pattern_id=None):
+                 name_pattern_id=None,
+                 debug=False):
 
         self.mesh_path = mesh_path_file
         self.verbose = verbose
+        self.debug = debug
         self.build_include_file = build_include_file
         self.include_path_file = bpy.path.abspath(include_path_file)
         self.name_pattern_location = name_pattern_location
@@ -76,6 +78,10 @@ class OrbiterBuildSettings:
         if self.verbose:
             self.log_file.write(log_string + "\n")
 
+    def log_debug(self, log_string):
+        if self.debug:
+            self.log_file.write(log_string + "\n")
+
     def write_to_include(self, include_text):
         if self.build_include_file:
             self.include_file.write(include_text)
@@ -85,52 +91,115 @@ class Vertex:
     """
     An Orbiter Export Vertex Class.
 
-    Convert a mesh vertex to world coordinates appropriate for the mesh
-    file using the world_matrix to world coordinates.
+    Vertex data is maintained in its native state until output.  At that point matrix
+    and axis swap will be applied if needed.
     """
 
-    def __init__(self, mesh_vertex, world_matrix):
-        w_vertex = world_matrix @ mesh_vertex.co  # Transform to world coords
-        w_normal = mesh_vertex.normal
-        self.x = w_vertex.x  # Note: z : y coords swapped
-        self.y = w_vertex.z
-        self.z = w_vertex.y
-        self.nx = w_normal.x
-        self.ny = w_normal.z
-        self.nz = w_normal.y
+    def __init__(self):
+        self.x = None
+        self.y = None
+        self.z = None
+        self.nx = None
+        self.ny = None
+        self.nz = None
         self.u = None
         self.v = None
 
-    def __str__(self):
-        result = "{:.4f} {:.4f} {:.4f} {:.4f} {:.4f} {:.4f}".format(
-            self.x, self.y, self.z, self.nx, self.ny, self.nz)
+    @classmethod
+    def from_BlenderVertex(cls, blvert, world_matrix):
+        nv = cls()
+        tv = world_matrix @ blvert.co  #  Transform
+        nv.x = tv.x
+        nv.y = tv.z  # swap y, z
+        nv.z = tv.y
+        nv.world_matrix = world_matrix
+        return nv
 
-        if (self.u is not None) and (self.v is not None):
+    @classmethod
+    def from_Vertex(cls, Vertex, normal=None, uv=None):
+        nv = cls()
+        nv.x = Vertex.x  #  World transform and swap has already been done
+        nv.y = Vertex.y
+        nv.z = Vertex.z
+
+        if normal:
+            nv.nx = normal.x
+            nv.ny = normal.z  # Swap y,z for the normal
+            nv.nz = normal.y
+        
+        if uv:
+            nv.u = uv[0]
+            nv.v = 1 - uv[1]
+
+        return nv
+
+    def __str__(self):
+        """
+        String representation of Vertex.
+        """
+        result = "V:[{:8.4f} {:8.4f} {:8.4f}]".format(self.x, self.y, self.z)
+
+        if self.nx or self.ny or self.nz:
+            result = "{} N:[{:7.4f} {:7.4f} {:7.4f}]".format(
+                result, self.nx, self.ny, self.nz)
+
+        if self.u or self.v:
+            result = "{} U:[{:6.4f} {:6.4f}]".format(result, self.u, self.v)
+
+        return result
+
+    def mesh_form(self, world_matrix):
+        result = "{:.4f} {:.4f} {:.4f}".format(self.x, self.y, self.z)
+
+        if self.nx or self.ny or self.nz:
+            result = "{} {:.4f} {:.4f} {:.4f}".format(
+            result, self.nx, self.ny, self.nz)
+
+        if self.u or self.v:
             result = "{} {:.4f} {:.4f}".format(result, self.u, self.v)
 
         return result
 
-    def nvertex_form(self):
+    def set_uv(self, uv):
+        """
+        Set the u,v value of the vertex if not set.
+        Return True if the uv value matches the uv value passed in.
+        """
+        if uv is None:
+            return True
+
+        if (self.u is None) or (self.v is None):
+            self.u = uv[0]
+            self.v = 1 - uv[1]
+
+        return self.u == uv[0] and self.v == 1 - uv[1]
+
+    def set_normal(self, normal):
+        """
+        Sets the vertex normal if not set.
+        Return True if the vertex.normal, and the passed in normal are now equal.
+        False indicates the vertex already has a normal different from the one passed in.
+        """
+        if normal is None:
+            return True
+
+        if ((self.nx is None) or (self.ny is None) or (self.nz is None)):
+            self.nx = normal.x
+            self.ny = normal.z  # Swap y,z
+            self.nz = normal.y
+
+        return self.nx == normal.x and self.ny == normal.z and self.nz == normal.y
+
+    def nvertex_form(self, world_matrix):
         tmp = "{:.4f}f, {:.4f}f, {:.4f}f, {:.4f}f, {:.4f}f, {:.4f}f,"
         result = tmp.format(self.x, self.y, self.z, self.nx, self.ny, self.nz)
 
-        if (self.u is not None) and (self.v is not None):
+        if self.u or self.v:
             result = "{} {:.4f}f, {:.4f}f".format(result, self.u, self.v)
         else:
             result = "{} 0.0f, 0.0f"
 
         return result
-
-    def is_uv_assigned(self):
-        """Return True if both u anv v are assigned for this vertex."""
-        return (self.u is not None) or (self.v is not None)
-
-    def is_uv_equal(self, u, v):
-        """
-        Return True if both params u and v are equal
-        this vertex's u an v members.
-        """
-        return (self.u == u) and (self.v == v)
 
     def vertex_form(self):
         """Return the vertex in _V form."""
@@ -215,68 +284,90 @@ class MeshGroup:
         deps = bpy.context.evaluated_depsgraph_get()
         object_eval = mesh_object.evaluated_get(depsgraph=deps)
         temp_mesh = object_eval.to_mesh()
-        temp_mesh.calc_loop_triangles()
-        self.parse_mesh(config=config, mesh=temp_mesh)
-        if len(temp_mesh.materials) > 0:
-            self.mat_name = temp_mesh.materials[0].name
-        else:
-            self.mat_name = None
-        object_eval.to_mesh_clear()
+        temp_mesh.validate()  # To fix a possibly invalid mesh.  This seems to help.
+        temp_mesh.calc_loop_triangles()  #  Orbiter needs triangles, so turn all polygons to tris.
+        
+        #  Calc split normals here, even if not using auto smooth, this will put
+        #  the normals in the mesh.loops collection where we can read them.
+        temp_mesh.calc_normals_split()
 
-        self.num_vertices = len(self.vertices_dict)
-        self.num_faces = len(self.triangles_list)
+        self.vertices_dict = {v.index:Vertex.from_BlenderVertex(v, self.matrix_world) for v in temp_mesh.vertices}
+        # for vertex in temp_mesh.vertices:
+        #     self.vertices_dict[vertex.index] = Vertex.from_BlenderVertex(vertex, self.matrix_world)
 
-    def parse_textured_mesh(self, config, mesh):
-        the_image = mesh.materials[0].node_tree.nodes['Image Texture'].image
-        self.uv_tex_name_path = the_image.filepath
-        self.is_dynamic_texture = mesh.materials[0].orbiter_is_dynamic
-        self.uv_tex_name = bpy.path.basename(path=self.uv_tex_name_path)
+        start_vert_count = len(temp_mesh.vertices)
+        config.log_line("Parsing mesh: {}, Vertices: {}".format(temp_mesh.name, start_vert_count))
 
+        has_uv = False
+        if (temp_mesh.uv_layers and temp_mesh.materials and 'Image Texture' in temp_mesh.materials[0].node_tree.nodes):
+            self.uv_tex_name_path = temp_mesh.materials[0].node_tree.nodes['Image Texture'].image.filepath
+            self.is_dynamic_texture = temp_mesh.materials[0].orbiter_is_dynamic
+            self.uv_tex_name = bpy.path.basename(path=self.uv_tex_name_path)
+            has_uv = True
+            config.log_line("Mesh has texture node: {}".format(self.uv_tex_name))
+
+        #  The vertex alone is not enough to know the normal used by the current triangle face
+        #  corner, for that we also need the polygon it belongs to.  The following lookup is
+        #  a map from (polygon, vertex) to a mesh.loops entry where the normal for this triangle
+        #  corner is stored.
+        loop_lookup = {}
+        for poly in temp_mesh.polygons:
+            for idx, vert in enumerate(poly.vertices):
+                loop_lookup[(poly.index, vert)] = poly.loop_indices[idx]
+
+        config.log_line("  Polys: {}  Tris: {}".format(len(temp_mesh.polygons), len(temp_mesh.loop_triangles)))
+
+        #  Now walk through the tri faces.  Each face has the polygon it belongs to
+        #  and each corner has the vertex.  Use this to look up the correct vertex normal.
         export_faces = []
-        for tri in mesh.loop_triangles:
+        for tri_face in temp_mesh.loop_triangles:
+            #  Each face has a vertices collection that contains the index to the vertices
+            #  these make up this triangle.  We need to collect these to define the triangle
+            #  face.  For each corner we look up that corner's normal in the mesh.loops
+            #  collection.  If the vertex our corner points to already has a normal assigned,
+            #  and it does not match our normal, we create a new vertex for the new normal.
+            #  When we do this, we need to update the face vertex index to point to the
+            #  new vertex.
             export_tri_face = {}
-            for loop_idx in range(0, 3):  # loop through the corners
-                uv = mesh.uv_layers[0].data[tri.loops[loop_idx]].uv
-                vert_u = uv[0]
-                vert_v = 1-uv[1]
-                vert_idx = tri.vertices[loop_idx]
-                export_tri_face[loop_idx] = vert_idx
-                exp_vertex = self.vertices_dict[vert_idx]
+            poly_index = tri_face.polygon_index
 
-                if (exp_vertex.is_uv_assigned() and
-                        not exp_vertex.is_uv_equal(vert_u, vert_v)):
-                    new_vertex = Vertex(
-                        mesh_vertex=mesh.vertices[vert_idx],
-                        world_matrix=self.matrix_world)
+            for corner_idx, corner_vert in enumerate(tri_face.vertices):
+                export_tri_face[corner_idx] = corner_vert
+                
+                uv = temp_mesh.uv_layers[0].data[tri_face.loops[corner_idx]].uv if has_uv else None
+
+                #  Deal with the normal
+                norm = temp_mesh.loops[loop_lookup[(poly_index, corner_vert)]].normal
+                work_vert = self.vertices_dict[corner_vert]
+
+                need_norm = not work_vert.set_normal(norm)
+                need_uv = not work_vert.set_uv(uv)
+
+                config.log_debug("{} Pidx:Tri[{}, {}][N {}, V {}]".format(
+                    work_vert, poly_index, corner_vert, need_norm, need_uv))
+                if need_norm or need_uv:
+                    #  duplicate vert.
+                    new_vert = Vertex.from_Vertex(work_vert, norm, uv)
                     new_key = len(self.vertices_dict.keys())
-                    new_vertex.u = vert_u
-                    new_vertex.v = vert_v
-                    self.vertices_dict[new_key] = new_vertex
-                    export_tri_face[loop_idx] = new_key
-                else:
-                    exp_vertex.u = vert_u
-                    exp_vertex.v = vert_v
+                    self.vertices_dict[new_key] = new_vert
+                    export_tri_face[corner_idx] = new_key
+                    config.log_line(" * {}".format(new_vert))
 
             export_faces.append(Triangle.from_dict(export_tri_face))
 
         self.triangles_list.extend(export_faces)
+        config.log_line("Finished parsing mesh: {}, Verts: {} to {}".format(
+            temp_mesh.name, start_vert_count, len(self.vertices_dict)))
 
-    def parse_mesh(self, config, mesh):
-        """
-        Parse the mesh getting vertex and triangle face data.
-        """
-
-        for vertex in mesh.vertices:
-            self.vertices_dict[vertex.index] = Vertex(
-                vertex, self.matrix_world)
-
-        if (mesh.uv_layers and mesh.materials and
-                'Image Texture' in mesh.materials[0].node_tree.nodes):
-            self.parse_textured_mesh(config, mesh)
+        if len(temp_mesh.materials) > 0:
+            self.mat_name = temp_mesh.materials[0].name
         else:
-            config.log_line("group is not textured.")
-            for tri in mesh.loop_triangles:
-                self.triangles_list.append(Triangle.from_trimesh(tri))
+            self.mat_name = None
+
+        object_eval.to_mesh_clear()
+
+        self.num_vertices = len(self.vertices_dict)
+        self.num_faces = len(self.triangles_list)
 
 
 def get_log_folder():
@@ -383,12 +474,9 @@ def build_include(config, scene, groups, texNames):
             if len(q_mesh.vertices) == 4:
                 q_mesh.calc_loop_triangles()
                 for vert_idx in q_mesh.vertices:
-                    ex_vert = Vertex(
-                                q_mesh.vertices[vert_idx],
-                                object.matrix_world)
+                    ex_vert = Vertex.from_BlenderVertex(q_mesh.vertices[vert_idx], object.matrix_world)
                     config.write_to_include(
-                        '    const VECTOR3 {}_QUAD_{} = '.format(
-                            object.name, vert_idx))
+                        '    const VECTOR3 {}_QUAD_{} = '.format(object.name, vert_idx))
                     config.write_to_include(
                         '    {{{:.4f}, {:.4f}, {:.4f}}};\n'.format(
                             ex_vert.x, ex_vert.z, ex_vert.y))
@@ -410,14 +498,10 @@ def export_orbiter(config, scene):
         scene.orbiter_scene_namespace = scene.name
 
     meshes = [m for m in scene.objects if m.type == 'MESH']
-    groups = [MeshGroup(
-                config=config,
-                mesh_object=m,
-                scene=scene) for m in meshes]
+    groups = [MeshGroup(config=config, mesh_object=m, scene=scene) for m in meshes]
     groups.sort(key=lambda x: x.sort_order, reverse=False)
     mat_names = [m.name for m in bpy.data.materials]  # Order is important.
-    tex_names = [
-        group.uv_tex_name for group in groups if group.uv_tex_name is not None]
+    tex_names = [group.uv_tex_name for group in groups if group.uv_tex_name is not None]
     tex_names = list(set(tex_names))    # this removes dups.
     dyn_texs = [grp.uv_tex_name for grp in groups if grp.is_dynamic_texture]
 
@@ -451,12 +535,10 @@ def export_orbiter(config, scene):
             mesh_file.write("MATERIAL {}\n".format(matIdx))
             mesh_file.write("TEXTURE {}\n".format(texIdx))
             mesh_file.write("FLAG {}\n".format(mesh_group.mesh_flag))
-            mesh_file.write(
-                "GEOM {} {}\n".format(
-                    mesh_group.num_vertices, mesh_group.num_faces))
+            mesh_file.write("GEOM {} {}\n".format(mesh_group.num_vertices, mesh_group.num_faces))
 
             for v_key in sorted(mesh_group.vertices_dict.keys()):
-                mesh_file.write("{}\n".format(mesh_group.vertices_dict[v_key]))
+                mesh_file.write("{}\n".format(mesh_group.vertices_dict[v_key].mesh_form(mesh_group.matrix_world)))
 
             for fl in mesh_group.triangles_list:
                 mesh_file.write("{}\n".format(fl))

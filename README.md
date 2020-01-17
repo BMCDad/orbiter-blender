@@ -1,5 +1,5 @@
 # Blender Orbiter Mesh Tools
-_Version 2.0.2_
+_Version 2.0.3_
 
 Orbiter Mesh Tools is a [Blender](https://www.blender.org/) add-on for generating [Orbiter](http://orbit.medphys.ucl.ac.uk/index.html) mesh files.  It will also, optionally, generate a C++ source file for the mesh being created.
 
@@ -20,6 +20,15 @@ In Blender, _z_ is treated as the _up_ and _y_ is the _forward_ axis.  When the 
 
 The add-on will use the first material defined for the object.  It will not convert any image file into a compatible .DDS format.  Blender supports .DDS textures, so the supported work flow is to place the texture files directly into Orbiter\Textures and reference them from there.  The output mesh file will then correctly reference that texture file.
 
+## Exporting and Import of Normals
+With version 2.0.3 the export and import process will use the 'split' normals for the mesh.  This has several benefits:
+- The shading you see in Blender will be closer to what you see in Orbiter.  This means if you shade a mesh as flat, it will show as flat in Orbiter and if you shade smooth, it will show smooth.
+- Blender 2.81 has Auto Smooth, which is similar to the split edge modifier, but easier to use.  This feature works with split normals.
+- Split normals can be edited independent of the faces it is associated with.  This allows you to do things like more natural rounded corners without introducing a lot of new geometry.
+
+Fewer modifiers and geometry loops means cleaner geometry to model with.
+
+If you want to mimic the use of vertex normals, you can do this by telling Blender to shade an object as 'smooth'.  This basically tells the split normals to behave as vertex normals.
 
 ## Blender Property Panels
 ### Output Panel
@@ -72,6 +81,9 @@ Import an Orbiter mesh file by selecting 'File - Import - Orbiter Mesh Import' i
 
 A new Blender scene will be created with the name of the mesh file.  Axis values are treated as explaned above, with _Y_ and _Z_ coordinates swapped.
 
-A node based material will be created for each unique Material + Texture combination found in the mesh file.
+A node based material will be created for each unique Material + Texture combination found in the mesh file.  The import process will look for textures in the Orbiter\Textures\ folder, so if you have renamed your Orbiter folder the import may fail.
 
-Normals are imported, but this is still a work in progress.  Blender 2.81 offers better normals support, but this appears to be very poorly documented in Blender, and good examples are sparse.
+Normals are imported as 'split', not 'vertex' normals.  Split normals are more versatile and easier to edit.
+
+
+**Note:**  The included Simple Walkthrough document is still included in the repository, and can be useful, but it currently does not reflect the changes in 2.0.3 to use split normals rather then vertex normals.  I'll get that updated soon.

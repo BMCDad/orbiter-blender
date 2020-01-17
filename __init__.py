@@ -17,11 +17,12 @@
 
 #   2.0.1       - Blender 2.81 support
 #   2.0.2       - Add mesh import
+#   2.0.3       - Support split normals
 
 bl_info = {
     "name": "Orbiter Mesh Tools",
     "author": "Blake Christensen",
-    "version": (2, 0, 2),
+    "version": (2, 0, 3),
     "blender": (2, 81, 0),
     "location": "",
     "description": "Tools for building Orbiter mesh files.",
@@ -77,42 +78,36 @@ class OrbiterBuildMesh(bpy.types.Operator):
 
         with orbiter_tools.OrbiterBuildSettings(
                 verbose=home_scene.orbiter_verbose,
+                debug=False,
                 include_path_file=home_scene.orbiter_include_path,
                 build_include_file=home_scene.orbiter_build_include_file,
                 mesh_path_file=home_scene.orbiter_mesh_path,
                 name_pattern_location=home_scene.orbiter_location_name_pattern,
                 name_pattern_verts=home_scene.orbiter_vert_array_name_pattern,
                 name_pattern_id=home_scene.orbiter_id_name_pattern) as config:
-            config.log_line(
-                "Orbiter Tools Build Log - Date: {}".format(time.asctime()))
-            config.log_line(
-                "Versions  Blender: {}  Blender Tools: {}".format(
+            
+            config.log_line("Orbiter Tools Build Log - Date: {}".format(time.asctime()))
+            config.log_line("Versions  Blender: {}  Blender Tools: {}".format(
                     bpy.app.version_string, bl_info["version"]))
             config.log_line(" ")
             config.log_line("Mesh Path: " + config.mesh_path)
-            config.log_line("Build Include File: {}".format(
-                config.build_include_file))
+            config.log_line("Build Include File: {}".format(config.build_include_file))
             if (config.build_include_file):
-                config.log_line(
-                    "Include Path File: " + config.include_path_file)
-                config.log_line(
-                    "Id name pattern: " + config.name_pattern_id)
-                config.log_line(
-                    "Location name pattern: " + config.name_pattern_location)
-                config.log_line(
-                    "Verts name pattern: " + config.name_pattern_verts)
+                config.log_line("Include Path File: " + config.include_path_file)
+                config.log_line("Id name pattern: " + config.name_pattern_id)
+                config.log_line("Location name pattern: " + config.name_pattern_location)
+                config.log_line("Verts name pattern: " + config.name_pattern_verts)
 
             config.log_line(" ")
             config.write_to_include(
-                "// Auto generated code file.  Blender:"
-                " {}  Blender Tools: {}\n".format(
+                "// Auto generated code file.  Blender: {}  Blender Tools: {}\n".format(
                     bpy.app.version_string, bl_info["version"]))
             config.write_to_include("// Date: {}\n\n\n".format(time.asctime()))
             config.write_to_include('#include "orbitersdk.h"\n\n')
             config.write_to_include('#ifndef __{}_H\n'.format(home_scene.name))
             config.write_to_include('#define __{}_H\n'.format(home_scene.name))
-            config.write_to_include('\nnamespace {} \n{{\n'.format(
-                home_scene.orbiter_outer_namespace))
+            config.write_to_include('\nnamespace {} \n{{\n'.format(home_scene.orbiter_outer_namespace))
+
             try:
                 for scene in bpy.data.scenes:
                     orbiter_tools.export_orbiter(config, scene)
@@ -122,8 +117,7 @@ class OrbiterBuildMesh(bpy.types.Operator):
 
             config.write_to_include('\n}\n')        # close outer namespace
             config.write_to_include('#endif\n')     # close include guards
-            self.report({'INFO'}, "Mesh build done: {}".format(
-                config.mesh_path))
+            self.report({'INFO'}, "Mesh build done: {}".format(config.mesh_path))
 
         return {"FINISHED"}
 
@@ -159,13 +153,9 @@ class IMPORT_OT_OrbiterMesh(bpy.types.Operator, ImportHelper):
     def execute(self, context):
         print("Import Orbiter Mesh started.")
 
-        with import_tools.OrbiterImportSettings(
-                verbose=self.orbitertools_import_verbose) as config:
+        with import_tools.OrbiterImportSettings(verbose=self.orbitertools_import_verbose) as config:
 
-            paths = [
-                os.path.join(self.directory, name.name)
-                for name in self.files]
-
+            paths = [os.path.join(self.directory, name.name) for name in self.files]
             if not paths:
                 paths.append(self.filepath)
 

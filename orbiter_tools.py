@@ -190,14 +190,14 @@ class Vertex:
 
         return self.nx == normal.x and self.ny == normal.z and self.nz == normal.y
 
-    def nvertex_form(self, world_matrix):
+    def nvertex_form(self):
         tmp = "{:.4f}f, {:.4f}f, {:.4f}f, {:.4f}f, {:.4f}f, {:.4f}f,"
         result = tmp.format(self.x, self.y, self.z, self.nx, self.ny, self.nz)
 
         if self.u or self.v:
             result = "{} {:.4f}f, {:.4f}f".format(result, self.u, self.v)
         else:
-            result = "{} 0.0f, 0.0f"
+            result = "{} 0.0f, 0.0f".format(result)
 
         return result
 
@@ -299,7 +299,10 @@ class MeshGroup:
         config.log_line("Parsing mesh: {}, Vertices: {}".format(temp_mesh.name, start_vert_count))
 
         has_uv = False
-        if (temp_mesh.uv_layers and temp_mesh.materials and 'Image Texture' in temp_mesh.materials[0].node_tree.nodes):
+        if (temp_mesh.uv_layers and 
+                temp_mesh.materials and 
+                temp_mesh.materials[0].use_nodes and 
+                'Image Texture' in temp_mesh.materials[0].node_tree.nodes):
             self.uv_tex_name_path = temp_mesh.materials[0].node_tree.nodes['Image Texture'].image.filepath
             self.is_dynamic_texture = temp_mesh.materials[0].orbiter_is_dynamic
             self.uv_tex_name = bpy.path.basename(path=self.uv_tex_name_path)
@@ -433,14 +436,11 @@ def build_include(config, scene, groups, texNames):
         if mesh_group.include_vertex_array:
             config.write_to_include(
                 "    const NTVERTEX {}[{}] = {{\n".format(
-                    config.name_pattern_verts.format(mesh_group.name),
-                    mesh_group.num_vertices))
+                    config.name_pattern_verts.format(mesh_group.name), mesh_group.num_vertices))
 
         for v_key in sorted(mesh_group.vertices_dict.keys()):
             if mesh_group.include_vertex_array:
-                config.write_to_include(
-                    "    {{{}}}".format(
-                        mesh_group.vertices_dict[v_key].nvertex_form()))
+                config.write_to_include("    {{{}}}".format(mesh_group.vertices_dict[v_key].nvertex_form()))
                 if v_key < (mesh_group.num_vertices - 1):
                     config.write_to_include(",\n")
 

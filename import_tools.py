@@ -232,11 +232,18 @@ def get_verts(group):
     for vert in group.verts:
         vts = [float(v) for v in vert]
         verts.append([vts[0], vts[2], vts[1]])  # swap y-z
-        if len(vts) == 5:  # no normals, but yes uvs
+        lenvts = len(vts)
+        if lenvts == 3:  # no normals or uvs, but we still need entries.
+            uvs.append([0.0, 0.0])
+            normals.append([0.0, 0.0, 0.0])
+        if lenvts == 5:  # no normals, but yes uvs
             uvs.append(vts[3:])
-        if len(vts) >= 6:
+            normals.append([0.0, 0.0, 0.0])
+        if lenvts == 6:
             normals.append([vts[3], vts[5], vts[4]])    # swap y - z
-        if len(vts) == 8:
+            uvs.append([0.0, 0.0])
+        if lenvts == 8:
+            normals.append([vts[3], vts[5], vts[4]])    # swap y - z
             uvs.append(vts[6:])
 
     return verts, normals, uvs

@@ -257,9 +257,30 @@ def get_tris(group):
     return tris
 
 
+def resolve_texture_path(config, orbiter_path, tex_name):
+    """
+    Resolve the texture file path.  Textures can be in Orbiter\\Textures,
+    or sometimes in Orbiter\\Textures2.  Textures2 is searched first, if not
+    found then Textures will be searched.
+    """
+    tex2_file = os.path.join(orbiter_path, "Textures2", tex_name)
+    tex_file = os.path.join(orbiter_path, "Textures", tex_name)
+    if os.path.exists(tex2_file):
+        config.log_line("Texture: {}".format(tex2_file))
+        return tex2_file
+
+    if os.path.exists(tex_file):
+        config.log_line("Texture: {}".format(tex_file))
+        return tex_file
+
+    print("WARN: Texture file not found: {}".format(tex_name))
+    config.log_line("WARN: Missing texture:[{}], [{}]".format(tex2_file, tex_file))
+    return ""
+
+
 def build_mat_textures(
         config,
-        orbiter_textures,
+        orbiter_path,
         scene_name,
         mesh_groups,
         materials,
@@ -304,10 +325,13 @@ def build_mat_textures(
         src_tex_file = ""
         if src_tex:   # Material has a texture
             mat_name = "{}_{}_{}".format(
-                scene_name, src_mat.name, src_tex.split(".")[0])
-            src_tex_file = os.path.join(orbiter_textures, src_tex)
+                src_mat.name, src_tex.split(".")[0], scene_name)
+            src_tex_file = resolve_texture_path(config, orbiter_path, src_tex)
+            print("Tex: {}".format(src_tex_file))
         else:
-            mat_name = "{}_{}".format(scene_name, src_mat.name)
+            mat_name = "{}_{}".format(src_mat.name, scene_name)
+        #  Note: Blender will truncate material names at 64, so mat_name
+        #  may not be the actual name.  Use new_mat.name in the dictionary.
         new_mat = bpy.data.materials.new(mat_name)
         new_mat.diffuse_color = [float(c) for c in src_mat.diffuse[:4]]
         new_mat.orbiter_ambient_color = [float(c) for c in src_mat.ambient[:4]]
@@ -319,7 +343,7 @@ def build_mat_textures(
         else:
             new_mat.orbiter_specular_power = 0
         new_mat.orbiter_emit_color = [float(c) for c in src_mat.emissive[:4]]
-        config.log_line("Created material: {}->{}".format(mt, mat_name))
+        config.log_line("Created material: {}->{}".format(mt, new_mat.name))
         config.log_line("  diffuse : {0:.4}, {0:.4}, {0:.4}, {0:.4}".format(
             *new_mat.diffuse_color))
         config.log_line("  ambient : {0:.4}, {0:.4}, {0:.4}, {0:.4}".format(
@@ -339,7 +363,7 @@ def build_mat_textures(
             new_mat.node_tree.links.new(
                 bsdf.inputs['Base Color'], texImage.outputs['Color'])
 
-        dict_mat[mt] = mat_name     # dict: (tuple) -> mat name.
+        dict_mat[mt] = new_mat.name     # dict: (tuple) -> mat name.
     config.log_line("Finished building {} materials.".format(len(dict_mat)))
     return dict_mat
 
@@ -381,18 +405,12 @@ def import_mesh(config, file_path):
     p = Path(file_path)
     up = [pp.lower() for pp in p.parts]
     orbiter_path = os.path.join(*up[0:up.index('orbiter') + 1])
-    orbiter_textures_path = os.path.realpath(
-        os.path.join(orbiter_path, "Textures"))
     print("Orbiter path: {}".format(orbiter_path))
-    print("Textures: {}".format(orbiter_textures_path))
-    config.log_line(
-        "Orbiter textures path (from target file): {}".format(
-            orbiter_textures_path))
 
     groups, materials, textures = read_mesh_file(config, file_path)
     mat_dict = build_mat_textures(
         config,
-        orbiter_textures_path,
+        orbiter_path,
         scene_name,
         groups,
         materials,

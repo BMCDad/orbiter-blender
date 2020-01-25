@@ -1,5 +1,4 @@
 # Blender Orbiter Mesh Tools
-_Version 2.0.3_
 
 Orbiter Mesh Tools is a [Blender](https://www.blender.org/) add-on for generating [Orbiter](http://orbit.medphys.ucl.ac.uk/index.html) mesh files.  It will also, optionally, generate a C++ source file for the mesh being created.
 
@@ -13,7 +12,6 @@ Blender 2.81.
 3.	Select 'Install' at the top of the Preferences window and find the orbiter-blender-master.zip file and click the 'Install Add-on' button.
 4.  Click the check box next to the add on name 'Import-Export: Orbiter Mesh Tools' to enable the add-on.
 5.  Read the included 'Orbiter Tools Tutorial.pdf' document for a tutorial on how to create a simple textured vessel for Orbiter using this plugin.
-
 
 
 ## General Usage

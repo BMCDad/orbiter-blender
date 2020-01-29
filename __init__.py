@@ -20,11 +20,13 @@
 #   2.0.3       - Support split normals
 #   2.0.4       - Bug fixes.
 #   2.0.5       - Fix issues with textures importing.
+#   2.0.6       - Fix issue building multiple scenes.
+#               - Output constexpr in place of macros.
 
 bl_info = {
     "name": "Orbiter Mesh Tools",
     "author": "Blake Christensen",
-    "version": (2, 0, 5),
+    "version": (2, 0, 6),
     "blender": (2, 81, 0),
     "location": "",
     "description": "Tools for building Orbiter mesh files.",
@@ -111,8 +113,11 @@ class OrbiterBuildMesh(bpy.types.Operator):
             config.write_to_include('\nnamespace {} \n{{\n'.format(home_scene.orbiter_outer_namespace))
 
             try:
+                active_scene = bpy.context.scene
                 for scene in bpy.data.scenes:
+                    bpy.context.window.scene = scene
                     orbiter_tools.export_orbiter(config, scene)
+                bpy.context.window.scene = active_scene
             except Exception:
                 config.log_line(traceback.format_exc())
                 raise

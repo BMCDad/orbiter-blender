@@ -453,7 +453,7 @@ def build_include(config, scene, groups, texNames):
                 bpy.path.clean_name(tex), (idx + 1)))
 
     config.write_to_include(
-        '    #define {}_MESH_NAME "{}"\n\n'.format(scene.name, scene.name))
+        '    constexpr auto MESH_NAME = "{}";\n\n'.format(scene.name))
     for idx, group in enumerate(grp_names):
         config.write_to_include(
             '    const UINT {} = {};\n'.format(

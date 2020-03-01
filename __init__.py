@@ -22,11 +22,12 @@
 #   2.0.5       - Fix issues with textures importing.
 #   2.0.6       - Fix issue building multiple scenes.
 #               - Output constexpr in place of macros.
+#   2.0.7       - Fix issue importing from Orbiter folder structure named other than 'Orbiter'.
 
 bl_info = {
     "name": "Orbiter Mesh Tools",
     "author": "Blake Christensen",
-    "version": (2, 0, 6),
+    "version": (2, 0, 7),
     "blender": (2, 81, 0),
     "location": "",
     "description": "Tools for building Orbiter mesh files.",

@@ -404,7 +404,7 @@ def import_mesh(config, file_path):
     # find the Orbiter path
     p = Path(file_path)
     up = [pp.lower() for pp in p.parts]
-    orbiter_path = os.path.join(*up[0:up.index('orbiter') + 1])
+    orbiter_path = os.path.join(*up[0:up.index('meshes')])
     print("Orbiter path: {}".format(orbiter_path))
 
     groups, materials, textures = read_mesh_file(config, file_path)

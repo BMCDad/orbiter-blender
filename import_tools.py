@@ -68,6 +68,7 @@ class ImportGroup():
         self.tris = []
         self.verts = []
         self.num_vert_entries = 0
+        self.name = None
 
     def get_vert_size(self):
         """
@@ -144,6 +145,9 @@ def read_group(file):
 
         if "FLAG" in flag.upper():
             new_group.flag = parts[1]
+
+        if "LABEL" in flag.upper():
+            new_group.name = parts[1]
 
         if "GEOM" in flag.upper():
             if len(parts) < 3:
@@ -421,10 +425,11 @@ def import_mesh(config, file_path):
     for idx, group in enumerate(groups):
         verts, normals, uvs = get_verts(group)
         tris = get_tris(group)
+        group_name = group.name if group.name else "Group_{}".format(idx)
         config.log_line(
-            "  Group: {}  verts: {}, tris {}, normals: {}, uvs: {}".format(
-                idx, len(verts), len(tris), len(normals), len(uvs)))
-        mesh_data = bpy.data.meshes.new("Mesh_{}".format(idx))
+            "  Group: {}, name: {},  verts: {}, tris {}, normals: {}, uvs: {}".format(
+                idx, group_name, len(verts), len(tris), len(normals), len(uvs)))
+        mesh_data = bpy.data.meshes.new(group_name)
         mesh_data.from_pydata(verts, [], tris)
         # test normals
         if len(normals) > 0:
@@ -447,7 +452,7 @@ def import_mesh(config, file_path):
         mesh_data.validate()
         mesh_data.update()
 
-        obj = bpy.data.objects.new("Group_{}".format(idx), mesh_data)
+        obj = bpy.data.objects.new(group_name, mesh_data)
         new_scene.collection.objects.link(obj)
         grp_mat_name = mat_dict[group.mat_index, group.tex_index]
         mat = bpy.data.materials[grp_mat_name]

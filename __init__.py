@@ -23,11 +23,13 @@
 #   2.0.6       - Fix issue building multiple scenes.
 #               - Output constexpr in place of macros.
 #   2.0.7       - Fix issue importing from Orbiter folder structure named other than 'Orbiter'.
+#   2.0.8       - Import: Name groups according to LABEL tag.
+#               - Export: Add option to export only selected.
 
 bl_info = {
     "name": "Orbiter Mesh Tools",
     "author": "Blake Christensen",
-    "version": (2, 0, 7),
+    "version": (2, 0, 8),
     "blender": (2, 81, 0),
     "location": "",
     "description": "Tools for building Orbiter mesh files.",
@@ -89,7 +91,8 @@ class OrbiterBuildMesh(bpy.types.Operator):
                 mesh_path_file=home_scene.orbiter_mesh_path,
                 name_pattern_location=home_scene.orbiter_location_name_pattern,
                 name_pattern_verts=home_scene.orbiter_vert_array_name_pattern,
-                name_pattern_id=home_scene.orbiter_id_name_pattern) as config:
+                name_pattern_id=home_scene.orbiter_id_name_pattern,
+                export_selected=home_scene.orbiter_export_selected) as config:
             
             config.log_line("Orbiter Tools Build Log - Date: {}".format(time.asctime()))
             config.log_line("Versions  Blender: {}  Blender Tools: {}".format(
@@ -115,10 +118,15 @@ class OrbiterBuildMesh(bpy.types.Operator):
 
             try:
                 active_scene = bpy.context.scene
-                for scene in bpy.data.scenes:
-                    bpy.context.window.scene = scene
-                    orbiter_tools.export_orbiter(config, scene)
-                bpy.context.window.scene = active_scene
+                # If no objects are selected, just behave as if export_selected is false.
+                config.export_selected = config.export_selected and len(bpy.context.selected_objects) > 0
+                if config.export_selected:
+                    orbiter_tools.export_orbiter(config, active_scene)
+                else:
+                    for scene in bpy.data.scenes:
+                        bpy.context.window.scene = scene
+                        orbiter_tools.export_orbiter(config, scene)
+                    bpy.context.window.scene = active_scene
             except Exception:
                 config.log_line(traceback.format_exc())
                 raise
@@ -320,6 +328,8 @@ class OBJECT_PT_OrbiterOutput(bpy.types.Panel):
         row = layout.row()
         row.prop(props_scene, "orbiter_verbose")
         row = layout.row()
+        row.prop(props_scene, "orbiter_export_selected")
+        row = layout.row()
         row.operator("orbiter.buildmesh", text="Build Mesh")
 
 
@@ -430,6 +440,10 @@ def register():
         description="String appended to the object name when creating "
                     "the const for the object's Id.",
         default="{}Id")
+    bpy.types.Scene.orbiter_export_selected = bpy.props.BoolProperty(
+        name="Export Selected",
+        description="Export only selected objects from active scene.",
+        default=False)
 
     # Material properties:
     bpy.types.Material.orbiter_ambient_color = bpy.props.FloatVectorProperty(
@@ -493,6 +507,7 @@ def unregister():
     del bpy.types.Scene.orbiter_location_name_pattern
     del bpy.types.Scene.orbiter_vert_array_name_pattern
     del bpy.types.Scene.orbiter_id_name_pattern
+    del bpy.types.Scene.orbiter_export_selected
     del bpy.types.Material.orbiter_ambient_color
     del bpy.types.Material.orbiter_specular_color
     del bpy.types.Material.orbiter_specular_power

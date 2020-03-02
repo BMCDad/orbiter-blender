@@ -32,11 +32,13 @@ class OrbiterBuildSettings:
                  name_pattern_location=None,
                  name_pattern_verts=None,
                  name_pattern_id=None,
-                 debug=False):
+                 debug=False,
+                 export_selected=False):
 
         self.mesh_path = mesh_path_file
         self.verbose = verbose
         self.debug = debug
+        self.export_selected = export_selected
         self.build_include_file = build_include_file
         self.include_path_file = bpy.path.abspath(include_path_file)
         self.name_pattern_location = name_pattern_location
@@ -497,7 +499,10 @@ def export_orbiter(config, scene):
     if not scene.orbiter_scene_namespace:
         scene.orbiter_scene_namespace = scene.name
 
-    meshes = [m for m in scene.objects if m.type == 'MESH']
+    exp_objects = bpy.context.selected_objects if config.export_selected else scene.objects
+    config.log_line("Export selected: {}, looking at {} objects.".format(config.export_selected, len(exp_objects)))
+    
+    meshes = [m for m in exp_objects if m.type == 'MESH']
     groups = [MeshGroup(config=config, mesh_object=m, scene=scene) for m in meshes]
     groups.sort(key=lambda x: x.sort_order, reverse=False)
     mat_names = [m.name for m in bpy.data.materials]  # Order is important.

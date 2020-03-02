@@ -3,7 +3,7 @@
 Orbiter Mesh Tools is a [Blender](https://www.blender.org/) add-on for generating [Orbiter](http://orbit.medphys.ucl.ac.uk/index.html) mesh files.  It will also, optionally, generate a C++ source file for the mesh being created.
 
 ## Compatibility:
-Blender 2.81.
+Blender 2.82.
 
 
 ## Getting Started
@@ -48,6 +48,8 @@ If you want to mimic the use of vertex normals, you can do this by telling Blend
 ***Vertex Name:*** Name of the object vertex object in the generated source file.  {} is replaced with the name of the object.
 
 ***Verbose:*** If checked a detailed log file will be generated that can be used for debugging when a mesh is not being generated as expected.  The name of the file is ‘BlenderTools.log’ and it will be written to the same folder that holds the blend file.
+
+***Export Selected:***  If checked, only selected objects from the active scene will be included in the mesh file.  However, if checked and *no* objects are selected, all objects will be included in the mesh file.
 
 ***Build Mesh:*** Initiates the process to build the mesh and include files as configured.  A ‘Blender Alert’ will display when the process is complete.
 

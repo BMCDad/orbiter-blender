@@ -118,7 +118,10 @@ def read_group(file):
     new_group = ImportGroup()
     flag = ""
     while True:
-        parts = file.readline().split()
+        decomment = file.readline().split(';')
+        # If something needs the comment, uncomment below, currently nothing does.
+        # comment = decomment[1] if len(decomment) > 1 else None
+        parts = decomment[0].split()
         if len(parts) == 0:
             continue
         flag = parts[0]
@@ -147,7 +150,7 @@ def read_group(file):
             new_group.flag = parts[1]
 
         if "LABEL" in flag.upper():
-            new_group.name = parts[1]
+            new_group.name = "_".join(parts[1:])
 
         if "GEOM" in flag.upper():
             if len(parts) < 3:

@@ -25,11 +25,14 @@
 #   2.0.7       - Fix issue importing from Orbiter folder structure named other than 'Orbiter'.
 #   2.0.8       - Import: Name groups according to LABEL tag.
 #               - Export: Add option to export only selected.
+#   2.0.9       - Import: Allow LABEL/Group names with spaces.
+#               - Export: Handle texture files in sub-folders of 'textures'.
+#               - Export: Fix bug that created too many vertices.
 
 bl_info = {
     "name": "Orbiter Mesh Tools",
     "author": "Blake Christensen",
-    "version": (2, 0, 8),
+    "version": (2, 0, 9),
     "blender": (2, 81, 0),
     "location": "",
     "description": "Tools for building Orbiter mesh files.",

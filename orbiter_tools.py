@@ -19,6 +19,7 @@
 import os
 import bpy
 import shutil
+from pathlib import Path
 
 
 class OrbiterBuildSettings:
@@ -189,8 +190,13 @@ class Vertex:
             self.nx = normal.x
             self.ny = normal.z  # Swap y,z
             self.nz = normal.y
+            return True
 
-        return self.nx == normal.x and self.ny == normal.z and self.nz == normal.y
+        # We get here if the vertex already has a normal.  We need to test if the existing
+        # normal and what is passed is the same.  Use a 'near' test as the same values
+        # may differ as floates.
+        tol = 0.001
+        return (abs(self.nx - normal.x) < tol) and (abs(self.ny - normal.z) < tol) and (abs(self.nz - normal.y) < tol)
 
     def nvertex_form(self):
         tmp = "{:.4f}f, {:.4f}f, {:.4f}f, {:.4f}f, {:.4f}f, {:.4f}f,"
@@ -307,7 +313,9 @@ class MeshGroup:
                 'Image Texture' in temp_mesh.materials[0].node_tree.nodes):
             self.uv_tex_name_path = temp_mesh.materials[0].node_tree.nodes['Image Texture'].image.filepath
             self.is_dynamic_texture = temp_mesh.materials[0].orbiter_is_dynamic
-            self.uv_tex_name = bpy.path.basename(path=self.uv_tex_name_path)
+            
+            self.uv_tex_name = get_texture_path(self.uv_tex_name_path)
+
             has_uv = True
             config.log_line("Mesh has texture node: {}".format(self.uv_tex_name))
 
@@ -373,6 +381,28 @@ class MeshGroup:
 
         self.num_vertices = len(self.vertices_dict)
         self.num_faces = len(self.triangles_list)
+
+def get_texture_path(tex_path):
+    """
+    Get the texture path relative to 'textures'.  This assumes the texture
+    being used in Blender resides in an Orbiter 'textures' folder or sub-folder.
+    This method will return the texture file name plus any folders that need to
+    be included under the 'textures' folder.  So..
+    ...\\textures\\mytexture.dds  becomes mytexture.dds
+    ...\\textures\\addon\\mytexture.dds becomes addon\\mytexture.dds
+    """
+    p = Path(tex_path)
+    lp = [pp.lower() for pp in p.parts]
+    op = [pp for pp in p.parts]
+    
+    tidx = len(lp) - 1  #  This will grab just the file if we are not in a textures folder.
+    if 'textures' in lp:
+        tidx = lp.index('textures') + 1
+    elif 'textures2' in lp:
+        tidx = lp.index('textures2') + 1
+
+    relparts = op[tidx:]
+    return os.path.join(*relparts)
 
 
 def get_log_folder():

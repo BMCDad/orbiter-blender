@@ -17,7 +17,7 @@ Blender 2.82.
 ## General Usage
 This add-on will create an Orbiter mesh file for each scene in the blend file that has the _orbiter mesh file_ option set in the Scene properties panel.  See Scene Panel below.  A single C++ file, if enabled, will be created for all scenes.
 
-In Blender, _z_ is treated as the _up_ and _y_ is the _forward_ axis.  When the mesh is created the _y_ and _z_ values are swapped to match what Orbiter expects.  This was done to allow a more intuitive use of the Blender view keys ([End]-front back, [Home]-top bottom, [PgDn]-left right) when modelling _z is horizontal_ type models in Blender, since Blender treats the X-Y plane as the _floor_.  The result is a standard _left-handed_ orientation for the Orbiter mesh.
+In Blender, _z_ is treated as the _up_ and _y_ is the _forward_ axis.  When the mesh is created the _y_ and _z_ values are swapped to match what Orbiter expects.  This was done to allow a more intuitive use of the Blender view keys ([End]-front back, [Home]-top bottom, [PgDn]-left right) when modelling _z is horizontal_ type models in Blender, since Blender treats the X-Y plane as the _floor_.  The result is a standard _left-handed_ orientation for the Orbiter mesh.  This behavior can be overridden by un-selecting the Swap YZ Axis option when building the mesh file.
 
 The add-on will use the first material defined for the object.  It will not convert any image file into a compatible .DDS format.  Blender supports .DDS textures, so the supported work flow is to place the texture files directly into Orbiter\Textures and reference them from there.  The output mesh file will then correctly reference that texture file.
 
@@ -51,6 +51,8 @@ If you want to mimic the use of vertex normals, you can do this by telling Blend
 
 ***Export Selected:***  If checked, only selected objects from the active scene will be included in the mesh file.  However, if checked and *no* objects are selected, all objects will be included in the mesh file.
 
+***Swap YZ Axis:***  If checked (default) the Y and Z axis values are swapped, as explained above.
+
 ***Build Mesh:*** Initiates the process to build the mesh and include files as configured.  A ‘Blender Alert’ will display when the process is complete.
 
 ### Scene Panel
@@ -82,7 +84,7 @@ If you want to mimic the use of vertex normals, you can do this by telling Blend
 ### Orbiter Mesh Import
 Import an Orbiter mesh file by selecting 'File - Import - Orbiter Mesh Import' inside Blender.
 
-A new Blender scene will be created with the name of the mesh file.  Axis values are treated as explaned above, with _Y_ and _Z_ coordinates swapped.
+A new Blender scene will be created with the name of the mesh file.  By default, axis values are treated as explaned above, with _Y_ and _Z_ coordinates swapped.  Disable this swap by un-checking the Swap YZ Axis option on the import screen.
 
 A node based material will be created for each unique Material + Texture combination found in the mesh file.  The import process will look for textures in the Orbiter\Textures\ folder, so if you have renamed your Orbiter folder the import may fail.
 

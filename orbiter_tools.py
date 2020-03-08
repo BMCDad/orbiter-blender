@@ -34,12 +34,14 @@ class OrbiterBuildSettings:
                  name_pattern_verts=None,
                  name_pattern_id=None,
                  debug=False,
-                 export_selected=False):
+                 export_selected=False,
+                 swap_yz=True):
 
         self.mesh_path = mesh_path_file
         self.verbose = verbose
         self.debug = debug
         self.export_selected = export_selected
+        self.swap_yz = swap_yz
         self.build_include_file = build_include_file
         self.include_path_file = bpy.path.abspath(include_path_file)
         self.name_pattern_location = name_pattern_location
@@ -93,9 +95,6 @@ class OrbiterBuildSettings:
 class Vertex:
     """
     An Orbiter Export Vertex Class.
-
-    Vertex data is maintained in its native state until output.  At that point matrix
-    and axis swap will be applied if needed.
     """
 
     def __init__(self):
@@ -109,26 +108,26 @@ class Vertex:
         self.v = None
 
     @classmethod
-    def from_BlenderVertex(cls, blvert, world_matrix):
+    def from_BlenderVertex(cls, blvert, world_matrix, swap_axis=True):
         nv = cls()
         tv = world_matrix @ blvert.co  #  Transform
-        nv.x = tv.x
-        nv.y = tv.z  # swap y, z
-        nv.z = tv.y
+        nv.x = tv.x if swap_axis else 0 - tv.x
+        nv.y = tv.z if swap_axis else tv.y
+        nv.z = tv.y if swap_axis else tv.z
         nv.world_matrix = world_matrix
         return nv
 
     @classmethod
-    def from_Vertex(cls, Vertex, normal=None, uv=None):
+    def from_Vertex(cls, Vertex, normal=None, uv=None, swap_axis=True):
         nv = cls()
         nv.x = Vertex.x  #  World transform and swap has already been done
         nv.y = Vertex.y
         nv.z = Vertex.z
 
         if normal:
-            nv.nx = normal.x
-            nv.ny = normal.z  # Swap y,z for the normal
-            nv.nz = normal.y
+            nv.nx = normal.x if swap_axis else 0 - normal.x
+            nv.ny = normal.z if swap_axis else normal.y
+            nv.nz = normal.y if swap_axis else normal.z
         
         if uv:
             nv.u = uv[0]
@@ -163,7 +162,7 @@ class Vertex:
 
         return result
 
-    def set_uv(self, uv):
+    def set_uv(self, uv, tolerance = 0.001):
         """
         Set the u,v value of the vertex if not set.
         Return True if the uv value matches the uv value passed in.
@@ -174,10 +173,11 @@ class Vertex:
         if (self.u is None) or (self.v is None):
             self.u = uv[0]
             self.v = 1 - uv[1]
+            return True
 
-        return self.u == uv[0] and self.v == 1 - uv[1]
+        return (abs(self.u - uv[0]) < tolerance) and (abs(self.v - (1 - uv[1])) < tolerance)
 
-    def set_normal(self, normal):
+    def set_normal(self, normal, tolerance = 0.001, swap_axis = True):
         """
         Sets the vertex normal if not set.
         Return True if the vertex.normal, and the passed in normal are now equal.
@@ -187,16 +187,18 @@ class Vertex:
             return True
 
         if ((self.nx is None) or (self.ny is None) or (self.nz is None)):
-            self.nx = normal.x
-            self.ny = normal.z  # Swap y,z
-            self.nz = normal.y
+            self.nx = normal.x if swap_axis else 0 - normal.x
+            self.ny = normal.z if swap_axis else normal.y
+            self.nz = normal.y if swap_axis else normal.z
             return True
 
         # We get here if the vertex already has a normal.  We need to test if the existing
         # normal and what is passed is the same.  Use a 'near' test as the same values
         # may differ as floates.
-        tol = 0.001
-        return (abs(self.nx - normal.x) < tol) and (abs(self.ny - normal.z) < tol) and (abs(self.nz - normal.y) < tol)
+        if swap_axis:
+            return (abs(self.nx - normal.x) < tolerance) and (abs(self.ny - normal.z) < tolerance) and (abs(self.nz - normal.y) < tolerance)
+        else:
+            return (abs(self.nx - (0 - normal.x)) < tolerance) and (abs(self.ny - normal.y) < tolerance) and (abs(self.nz - normal.z) < tolerance)
 
     def nvertex_form(self):
         tmp = "{:.4f}f, {:.4f}f, {:.4f}f, {:.4f}f, {:.4f}f, {:.4f}f,"
@@ -224,19 +226,14 @@ class Triangle:
 
     def __init__(self, v1, v2, v3):
         self.v1 = v1  # Note: orientation reversed to match Orbiter
-        self.v2 = v3
-        self.v3 = v2
+        # self.v2 = v3
+        # self.v3 = v2
+        self.v2 = v2
+        self.v3 = v3
 
     @classmethod
     def from_dict(cls, tri_list):
-        return cls(tri_list[0], tri_list[1], tri_list[2])
-
-    @classmethod
-    def from_trimesh(cls, tri_mesh):
-        return cls(
-            tri_mesh.vertices[0],
-            tri_mesh.vertices[1],
-            tri_mesh.vertices[2])
+        return cls(tri_list[0], tri_list[2], tri_list[1])
 
     def __str__(self):
         return "{} {} {}".format(self.v1, self.v2, self.v3)
@@ -299,7 +296,7 @@ class MeshGroup:
         #  the normals in the mesh.loops collection where we can read them.
         temp_mesh.calc_normals_split()
 
-        self.vertices_dict = {v.index:Vertex.from_BlenderVertex(v, self.matrix_world) for v in temp_mesh.vertices}
+        self.vertices_dict = {v.index:Vertex.from_BlenderVertex(v, self.matrix_world, config.swap_yz) for v in temp_mesh.vertices}
         # for vertex in temp_mesh.vertices:
         #     self.vertices_dict[vertex.index] = Vertex.from_BlenderVertex(vertex, self.matrix_world)
 
@@ -353,20 +350,22 @@ class MeshGroup:
                 norm = temp_mesh.loops[loop_lookup[(poly_index, corner_vert)]].normal
                 work_vert = self.vertices_dict[corner_vert]
 
-                need_norm = not work_vert.set_normal(norm)
+                need_norm = not work_vert.set_normal(normal=norm, swap_axis=config.swap_yz)
                 need_uv = not work_vert.set_uv(uv)
 
                 config.log_debug("{} Pidx:Tri[{}, {}][N {}, V {}]".format(
                     work_vert, poly_index, corner_vert, need_norm, need_uv))
                 if need_norm or need_uv:
                     #  duplicate vert.
-                    new_vert = Vertex.from_Vertex(work_vert, norm, uv)
+                    new_vert = Vertex.from_Vertex(work_vert, norm, uv, config.swap_yz)
                     new_key = len(self.vertices_dict.keys())
                     self.vertices_dict[new_key] = new_vert
                     export_tri_face[corner_idx] = new_key
-                    config.log_line(" * {}".format(new_vert))
+                    config.log_line("d p:[{:4d}] c:[{:2d}] {}, {}".format(poly_index, corner_idx, new_vert, norm))
+                else:
+                    config.log_line("  p:[{:4d}] c:[{:2d}] {}, {}".format(poly_index, corner_idx, work_vert, norm))
 
-            export_faces.append(Triangle.from_dict(export_tri_face))
+            export_faces.append(Triangle.from_dict(tri_list = export_tri_face))
 
         self.triangles_list.extend(export_faces)
         config.log_line("Finished parsing mesh: {}, Verts: {} to {}".format(
@@ -498,20 +497,25 @@ def build_include(config, scene, groups, texNames):
                 '    const VECTOR3 {} = '.format(
                     config.name_pattern_location.format(object.name)))
             # swap y - z
-            config.write_to_include(
-                '    {{{:.4f}, {:.4f}, {:.4f}}};\n'.format(ov.x, ov.z, ov.y))
+            if config.swap_yz:
+                config.write_to_include(
+                    '    {{{:.4f}, {:.4f}, {:.4f}}};\n'.format(ov.x, ov.z, ov.y))
+            else:
+                config.write_to_include(
+                    '    {{{:.4f}, {:.4f}, {:.4f}}};\n'.format(0 - ov.x, ov.y, ov.z))
+
 
         if object.orbiter_include_quad:
             q_mesh = object.to_mesh(preserve_all_data_layers=True)
             if len(q_mesh.vertices) == 4:
                 q_mesh.calc_loop_triangles()
                 for vert_idx in q_mesh.vertices:
-                    ex_vert = Vertex.from_BlenderVertex(q_mesh.vertices[vert_idx], object.matrix_world)
+                    ex_vert = Vertex.from_BlenderVertex(q_mesh.vertices[vert_idx], object.matrix_world, config.swap_yz)
                     config.write_to_include(
                         '    const VECTOR3 {}_QUAD_{} = '.format(object.name, vert_idx))
                     config.write_to_include(
                         '    {{{:.4f}, {:.4f}, {:.4f}}};\n'.format(
-                            ex_vert.x, ex_vert.z, ex_vert.y))
+                            ex_vert.x, ex_vert.y, ex_vert.z))
 
             object.to_mesh_clear()
 

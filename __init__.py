@@ -28,11 +28,13 @@
 #   2.0.9       - Import: Allow LABEL/Group names with spaces.
 #               - Export: Handle texture files in sub-folders of 'textures'.
 #               - Export: Fix bug that created too many vertices.
+#   2.0.10      - Import/Export: Add flag to control if Y-Z axis are swapped.
+#               - Export: Further improvement to export too many vertices bug.
 
 bl_info = {
     "name": "Orbiter Mesh Tools",
     "author": "Blake Christensen",
-    "version": (2, 0, 9),
+    "version": (2, 0, 10),
     "blender": (2, 81, 0),
     "location": "",
     "description": "Tools for building Orbiter mesh files.",
@@ -95,7 +97,8 @@ class OrbiterBuildMesh(bpy.types.Operator):
                 name_pattern_location=home_scene.orbiter_location_name_pattern,
                 name_pattern_verts=home_scene.orbiter_vert_array_name_pattern,
                 name_pattern_id=home_scene.orbiter_id_name_pattern,
-                export_selected=home_scene.orbiter_export_selected) as config:
+                export_selected=home_scene.orbiter_export_selected,
+                swap_yz=home_scene.orbiter_swap_yz) as config:
             
             config.log_line("Orbiter Tools Build Log - Date: {}".format(time.asctime()))
             config.log_line("Versions  Blender: {}  Blender Tools: {}".format(
@@ -103,6 +106,8 @@ class OrbiterBuildMesh(bpy.types.Operator):
             config.log_line(" ")
             config.log_line("Mesh Path: " + config.mesh_path)
             config.log_line("Build Include File: {}".format(config.build_include_file))
+            config.log_line("Export selected: {}".format(config.export_selected))
+            config.log_line("Swap YZ Axis: {}".format(config.swap_yz))
             if (config.build_include_file):
                 config.log_line("Include Path File: " + config.include_path_file)
                 config.log_line("Id name pattern: " + config.name_pattern_id)
@@ -165,6 +170,12 @@ class IMPORT_OT_OrbiterMesh(bpy.types.Operator, ImportHelper):
             default=False,
             )
 
+    orbitertools_import_swap_yz: BoolProperty(
+            name="Swap YZ Axis",
+            description="Swap Y and Z axis values.",
+            default=True,
+            )
+
     @classmethod
     def poll(cls, context):
         return context.mode is not 'EDIT_MESH'
@@ -172,7 +183,9 @@ class IMPORT_OT_OrbiterMesh(bpy.types.Operator, ImportHelper):
     def execute(self, context):
         print("Import Orbiter Mesh started.")
 
-        with import_tools.OrbiterImportSettings(verbose=self.orbitertools_import_verbose) as config:
+        with import_tools.OrbiterImportSettings(
+                verbose=self.orbitertools_import_verbose,
+                swap_yz=self.orbitertools_import_swap_yz) as config:
 
             paths = [os.path.join(self.directory, name.name) for name in self.files]
             if not paths:
@@ -217,6 +230,7 @@ class ORBITERTOOLS_PT_import_mesh(bpy.types.Panel):
         operator = sfile.active_operator
 
         layout.prop(operator, "orbitertools_import_verbose")
+        layout.prop(operator, "orbitertools_import_swap_yz")
 
 
 class OBJECT_PT_OrbiterMaterial(bpy.types.Panel):
@@ -333,6 +347,8 @@ class OBJECT_PT_OrbiterOutput(bpy.types.Panel):
         row = layout.row()
         row.prop(props_scene, "orbiter_export_selected")
         row = layout.row()
+        row.prop(props_scene, "orbiter_swap_yz")
+        row = layout.row()
         row.operator("orbiter.buildmesh", text="Build Mesh")
 
 
@@ -447,6 +463,11 @@ def register():
         name="Export Selected",
         description="Export only selected objects from active scene.",
         default=False)
+    bpy.types.Scene.orbiter_swap_yz = bpy.props.BoolProperty(
+        name="Swap YZ axis",
+        description="Swap the Y and Z axis when exporting.",
+        default=True)
+
 
     # Material properties:
     bpy.types.Material.orbiter_ambient_color = bpy.props.FloatVectorProperty(
@@ -511,6 +532,7 @@ def unregister():
     del bpy.types.Scene.orbiter_vert_array_name_pattern
     del bpy.types.Scene.orbiter_id_name_pattern
     del bpy.types.Scene.orbiter_export_selected
+    del bpy.types.Scene.orbiter_swap_yz
     del bpy.types.Material.orbiter_ambient_color
     del bpy.types.Material.orbiter_specular_color
     del bpy.types.Material.orbiter_specular_power

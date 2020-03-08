@@ -25,9 +25,12 @@ class OrbiterImportSettings:
     """Container for the import settings."""
 
     def __init__(self,
-                 verbose=False):
+                 verbose=False,
+                 swap_yz=True):
 
         self.verbose = verbose
+        self.swap_yz = swap_yz
+        
         self.log_file_path = orbiter_tools.build_file_path(
             orbiter_tools.get_log_folder(), "BlenderTools", ".log")
         if self.verbose:
@@ -224,7 +227,7 @@ def read_textures(file):
     return tex_names
 
 
-def get_verts(group):
+def get_verts(group, swap_yz = True):
     """
     Returns the collection of vertices, normals, and uvs for a group.
 
@@ -238,7 +241,11 @@ def get_verts(group):
 
     for vert in group.verts:
         vts = [float(v) for v in vert]
-        verts.append([vts[0], vts[2], vts[1]])  # swap y-z
+        if swap_yz:
+            verts.append([vts[0], vts[2], vts[1]])  # swap y-z
+        else:
+            verts.append([0 - vts[0], vts[1], vts[2]])
+
         lenvts = len(vts)
         if lenvts == 3:  # no normals or uvs, but we still need entries.
             uvs.append([0.0, 0.0])
@@ -247,20 +254,29 @@ def get_verts(group):
             uvs.append(vts[3:])
             normals.append([0.0, 0.0, 0.0])
         if lenvts == 6:
-            normals.append([vts[3], vts[5], vts[4]])    # swap y - z
+            if swap_yz:
+                normals.append([vts[3], vts[5], vts[4]])    # swap y - z
+            else:
+                normals.append([0 - vts[3], vts[4], vts[5]])
             uvs.append([0.0, 0.0])
         if lenvts == 8:
-            normals.append([vts[3], vts[5], vts[4]])    # swap y - z
+            if swap_yz:
+                normals.append([vts[3], vts[5], vts[4]])    # swap y - z
+            else:
+                normals.append([0 - vts[3], vts[4], vts[5]])
             uvs.append(vts[6:])
 
     return verts, normals, uvs
 
 
-def get_tris(group):
+def get_tris(group, swap_yz = True):
     tris = []
     for tri in group.tris:
         tr = [int(t) for t in tri]
+        #if swap_yz:
         tris.append([tr[0], tr[2], tr[1]])  # Change order from Orbiter
+        #else:
+        #    tris.append([tr[0], tr[1], tr[2]])
     return tris
 
 
@@ -426,8 +442,8 @@ def import_mesh(config, file_path):
     new_scene = bpy.data.scenes.new(name=scene_name)
     config.log_line("Start building {} groups in scene: {}".format(len(groups), scene_name))
     for idx, group in enumerate(groups):
-        verts, normals, uvs = get_verts(group)
-        tris = get_tris(group)
+        verts, normals, uvs = get_verts(group, config.swap_yz)
+        tris = get_tris(group, config.swap_yz)
         group_name = group.name if group.name else "Group_{}".format(idx)
         config.log_line(
             "  Group: {}, name: {},  verts: {}, tris {}, normals: {}, uvs: {}".format(

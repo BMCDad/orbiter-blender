@@ -32,11 +32,12 @@
 #               - Export: Further improvement to export too many vertices bug.
 #   2.0.11      - Export: Add Sort method that allows mesh group sort by name.
 #               - Export: When exporting selected objects, only include those materials/textures in file.
+#   2.0.12      - Export: Fix material sort order issue.
 
 bl_info = {
     "name": "Orbiter Mesh Tools",
     "author": "Blake Christensen",
-    "version": (2, 0, 11),
+    "version": (2, 0, 12),
     "blender": (2, 81, 0),
     "location": "",
     "description": "Tools for building Orbiter mesh files.",

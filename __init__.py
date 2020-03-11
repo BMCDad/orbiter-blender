@@ -30,11 +30,13 @@
 #               - Export: Fix bug that created too many vertices.
 #   2.0.10      - Import/Export: Add flag to control if Y-Z axis are swapped.
 #               - Export: Further improvement to export too many vertices bug.
+#   2.0.11      - Export: Add Sort method that allows mesh group sort by name.
+#               - Export: When exporting selected objects, only include those materials/textures in file.
 
 bl_info = {
     "name": "Orbiter Mesh Tools",
     "author": "Blake Christensen",
-    "version": (2, 0, 10),
+    "version": (2, 0, 11),
     "blender": (2, 81, 0),
     "location": "",
     "description": "Tools for building Orbiter mesh files.",
@@ -98,7 +100,8 @@ class OrbiterBuildMesh(bpy.types.Operator):
                 name_pattern_verts=home_scene.orbiter_vert_array_name_pattern,
                 name_pattern_id=home_scene.orbiter_id_name_pattern,
                 export_selected=home_scene.orbiter_export_selected,
-                swap_yz=home_scene.orbiter_swap_yz) as config:
+                swap_yz=home_scene.orbiter_swap_yz,
+                sort_method=home_scene.orbiter_export_sortmode) as config:
             
             config.log_line("Orbiter Tools Build Log - Date: {}".format(time.asctime()))
             config.log_line("Versions  Blender: {}  Blender Tools: {}".format(
@@ -108,6 +111,7 @@ class OrbiterBuildMesh(bpy.types.Operator):
             config.log_line("Build Include File: {}".format(config.build_include_file))
             config.log_line("Export selected: {}".format(config.export_selected))
             config.log_line("Swap YZ Axis: {}".format(config.swap_yz))
+            config.log_line("Sorting method: {}".format(config.sort_method))
             if (config.build_include_file):
                 config.log_line("Include Path File: " + config.include_path_file)
                 config.log_line("Id name pattern: " + config.name_pattern_id)
@@ -349,6 +353,8 @@ class OBJECT_PT_OrbiterOutput(bpy.types.Panel):
         row = layout.row()
         row.prop(props_scene, "orbiter_swap_yz")
         row = layout.row()
+        row.prop(props_scene, "orbiter_export_sortmode")
+        row = layout.row()
         row.operator("orbiter.buildmesh", text="Build Mesh")
 
 
@@ -467,6 +473,16 @@ def register():
         name="Swap YZ axis",
         description="Swap the Y and Z axis when exporting.",
         default=True)
+    bpy.types.Scene.orbiter_export_sortmode = bpy.props.EnumProperty(
+        name="Sort Mode",
+        description="Select mesh group sorting method.",
+        items=[
+            ("SORTORDER", "Sort Order", "Sort by Sort Order property in Object properties panel"),
+            ("GROUPNAMEASC", "Group Name ASC", "Sort by Group Name in ascending order"),
+            ("GROUPNAMEDESC", "Group Name DESC", "Sort by Group Name in descending order")
+        ],
+        default="SORTORDER"
+    )
 
 
     # Material properties:
@@ -533,6 +549,7 @@ def unregister():
     del bpy.types.Scene.orbiter_id_name_pattern
     del bpy.types.Scene.orbiter_export_selected
     del bpy.types.Scene.orbiter_swap_yz
+    del bpy.types.Scene.orbiter_export_sortmode
     del bpy.types.Material.orbiter_ambient_color
     del bpy.types.Material.orbiter_specular_color
     del bpy.types.Material.orbiter_specular_power

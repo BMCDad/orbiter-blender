@@ -35,13 +35,15 @@ class OrbiterBuildSettings:
                  name_pattern_id=None,
                  debug=False,
                  export_selected=False,
-                 swap_yz=True):
+                 swap_yz=True,
+                 sort_method='Sort Order'):
 
         self.mesh_path = mesh_path_file
         self.verbose = verbose
         self.debug = debug
         self.export_selected = export_selected
         self.swap_yz = swap_yz
+        self.sort_method = sort_method
         self.build_include_file = build_include_file
         self.include_path_file = bpy.path.abspath(include_path_file)
         self.name_pattern_location = name_pattern_location
@@ -538,10 +540,19 @@ def export_orbiter(config, scene):
     
     meshes = [m for m in exp_objects if m.type == 'MESH']
     groups = [MeshGroup(config=config, mesh_object=m, scene=scene) for m in meshes]
-    groups.sort(key=lambda x: x.sort_order, reverse=False)
-    mat_names = [m.name for m in bpy.data.materials]  # Order is important.
-    tex_names = [group.uv_tex_name for group in groups if group.uv_tex_name is not None]
-    tex_names = list(set(tex_names))    # this removes dups.
+
+    if config.sort_method == 'GROUPNAMEASC':
+        groups.sort(key=lambda x: x.name, reverse=False)
+    elif config.sort_method == 'GROUPNAMEDESC':
+        groups.sort(key=lambda x: x.name, reverse=True)
+    else:  # default SORTORDER
+        groups.sort(key=lambda x: x.sort_order, reverse=False)
+
+    # mat_names = [m.name for m in bpy.data.materials]  # Order is important.
+    mat_names = []
+    tex_names = []
+    # tex_names = [group.uv_tex_name for group in groups if group.uv_tex_name is not None]
+    # tex_names = list(set(tex_names))    # this removes dups.
     dyn_texs = [grp.uv_tex_name for grp in groups if grp.is_dynamic_texture]
 
     with open(mesh_path, "w") as mesh_file:
@@ -549,15 +560,21 @@ def export_orbiter(config, scene):
         mesh_file.write("GROUPS {}\n".format(len(meshes)))
 
         for mesh_group in groups:
-            if mesh_group.mat_name in mat_names:
-                matIdx = mat_names.index(mesh_group.mat_name) + 1
-            else:
-                matIdx = 0
+            matIdx = 0
+            if mesh_group.mat_name:
+                if mesh_group.mat_name in mat_names:
+                    matIdx = mat_names.index(mesh_group.mat_name) + 1
+                else:
+                    mat_names.append(mesh_group.mat_name)
+                    matIdx = len(mat_names)
 
-            if mesh_group.uv_tex_name in tex_names:
-                texIdx = tex_names.index(mesh_group.uv_tex_name) + 1
-            else:
-                texIdx = 0
+            texIdx = 0
+            if mesh_group.uv_tex_name:
+                if mesh_group.uv_tex_name in tex_names:
+                    texIdx = tex_names.index(mesh_group.uv_tex_name) + 1
+                else:
+                    tex_names.append(mesh_group.uv_tex_name)
+                    texIdx = len(tex_names)
 
             config.log_line(
                 "Writing group: {}, Mat: {}, Tex: {}, Verts: {}, Faces: "
@@ -582,13 +599,14 @@ def export_orbiter(config, scene):
             for fl in mesh_group.triangles_list:
                 mesh_file.write("{}\n".format(fl))
 
-        mesh_file.write("MATERIALS {}\n".format(len(bpy.data.materials)))
+        mesh_file.write("MATERIALS {}\n".format(len(mat_names)))
         for mName in mat_names:
             mesh_file.write("{}\n".format(mName.replace(' ', '_')))
 
         for m in bpy.data.materials:
-            mesh_file.write("MATERIAL {}\n".format(m.name.replace(' ', '_')))
-            output_material(mesh_file, m)
+            if m.name in mat_names:
+                mesh_file.write("MATERIAL {}\n".format(m.name.replace(' ', '_')))
+                output_material(mesh_file, m)
 
         mesh_file.write("TEXTURES {}\n".format(len(tex_names)))
         for tex in tex_names:

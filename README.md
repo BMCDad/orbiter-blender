@@ -53,6 +53,8 @@ If you want to mimic the use of vertex normals, you can do this by telling Blend
 
 ***Swap YZ Axis:***  If checked (default) the Y and Z axis values are swapped, as explained above.
 
+***Sort Mode:***  Select the sort mode for the exported groups.  *Sort Order* (default) sort the groups based on the Sort Order property in the Blender object.  *Group Name ASC* sort the groups by group name in ascending order.  *Group Name DESC* sort the groups by name in descending order.
+
 ***Build Mesh:*** Initiates the process to build the mesh and include files as configured.  A ‘Blender Alert’ will display when the process is complete.
 
 ### Scene Panel

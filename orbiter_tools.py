@@ -603,10 +603,11 @@ def export_orbiter(config, scene):
         for mName in mat_names:
             mesh_file.write("{}\n".format(mName.replace(' ', '_')))
 
-        for m in bpy.data.materials:
-            if m.name in mat_names:
-                mesh_file.write("MATERIAL {}\n".format(m.name.replace(' ', '_')))
-                output_material(mesh_file, m)
+        for m in mat_names:
+            mat = next((bmat for bmat in bpy.data.materials if bmat.name == m), None)
+            if mat:
+                mesh_file.write("MATERIAL {}\n".format(mat.name.replace(' ', '_')))
+                output_material(mesh_file, mat)
 
         mesh_file.write("TEXTURES {}\n".format(len(tex_names)))
         for tex in tex_names:

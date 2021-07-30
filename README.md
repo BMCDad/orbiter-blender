@@ -7,11 +7,12 @@ Blender 2.82.
 
 
 ## Getting Started
-1.	Click on the 'Clone or Download' in Github and select Download ZIP.
-2.	In Blender open *User Preferences* and go to the *Add Ons* tab.
-3.	Select 'Install' at the top of the Preferences window and find the orbiter-blender-master.zip file and click the 'Install Add-on' button.
-4.  Click the check box next to the add on name 'Import-Export: Orbiter Mesh Tools' to enable the add-on.
-5.  Read the included 'Orbiter Tools Tutorial.pdf' document for a tutorial on how to create a simple textured vessel for Orbiter using this plugin.
+1.	Under _Releases_ above, click on the _Latest_ release.  This will open the Release page.
+2.  Under _Assets_ click on _Source code (zip)_.  This will download a zip file to your PC.
+3.	In Blender open *User Preferences* and go to the *Add Ons* tab.
+4.	Select _Install_ at the top of the Preferences window and find the zip file you just download, and click the _Install Add-on_ button.
+5.  Click the check box next to the add on name _Import-Export: Orbiter Mesh Tools_ to enable the add-on.
+6.  Read the included _Orbiter Tools Tutorial.pdf_ document for a tutorial on how to create a simple textured vessel for Orbiter using this plugin.
 
 
 ## General Usage

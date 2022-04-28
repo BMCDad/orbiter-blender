@@ -110,30 +110,30 @@ class Vertex:
         self.v = None
 
     @classmethod
-    def from_BlenderVertex(cls, blvert, world_matrix, swap_axis=True):
+    def from_BlenderVertex(cls, blvert, world_matrix, swap_axis=True, is_2d_panel=False):
         nv = cls()
         tv = world_matrix @ blvert.co  #  Transform
-        nv.x = tv.x if swap_axis else 0 - tv.x
+        nv.x = tv.x if swap_axis or is_2d_panel else 0 - tv.x
         nv.y = tv.z if swap_axis else tv.y
         nv.z = tv.y if swap_axis else tv.z
         nv.world_matrix = world_matrix
         return nv
 
     @classmethod
-    def from_Vertex(cls, Vertex, normal=None, uv=None, swap_axis=True):
+    def from_Vertex(cls, Vertex, normal=None, uv=None, swap_axis=True, is_2d_panel=False):
         nv = cls()
         nv.x = Vertex.x  #  World transform and swap has already been done
         nv.y = Vertex.y
         nv.z = Vertex.z
 
         if normal:
-            nv.nx = normal.x if swap_axis else 0 - normal.x
+            nv.nx = normal.x if swap_axis or is_2d_panel else 0 - normal.x
             nv.ny = normal.z if swap_axis else normal.y
             nv.nz = normal.y if swap_axis else normal.z
         
         if uv:
             nv.u = uv[0]
-            nv.v = 1 - uv[1]
+            nv.v = uv[1] if is_2d_panel else 1 - uv[1]
 
         return nv
 
@@ -164,7 +164,7 @@ class Vertex:
 
         return result
 
-    def set_uv(self, uv, tolerance = 0.001):
+    def set_uv(self, uv, panel_adjust = False, tolerance = 0.001):
         """
         Set the u,v value of the vertex if not set.
         Return True if the uv value matches the uv value passed in.
@@ -172,12 +172,15 @@ class Vertex:
         if uv is None:
             return True
 
+        nu = uv[0]
+        nv = uv[1] if panel_adjust else (1 - uv[1])
+
         if (self.u is None) or (self.v is None):
-            self.u = uv[0]
-            self.v = 1 - uv[1]
+            self.u = nu
+            self.v = nv
             return True
 
-        return (abs(self.u - uv[0]) < tolerance) and (abs(self.v - (1 - uv[1])) < tolerance)
+        return (abs(self.u - nu) < tolerance) and (abs(self.v - nv) < tolerance)
 
     def set_normal(self, normal, tolerance = 0.001, swap_axis = True):
         """
@@ -298,7 +301,7 @@ class MeshGroup:
         #  the normals in the mesh.loops collection where we can read them.
         temp_mesh.calc_normals_split()
 
-        self.vertices_dict = {v.index:Vertex.from_BlenderVertex(v, self.matrix_world, config.swap_yz) for v in temp_mesh.vertices}
+        self.vertices_dict = {v.index:Vertex.from_BlenderVertex(v, self.matrix_world, config.swap_yz, scene.orbiter_is_2d_panel) for v in temp_mesh.vertices}
         # for vertex in temp_mesh.vertices:
         #     self.vertices_dict[vertex.index] = Vertex.from_BlenderVertex(vertex, self.matrix_world)
 
@@ -353,13 +356,13 @@ class MeshGroup:
                 work_vert = self.vertices_dict[corner_vert]
 
                 need_norm = not work_vert.set_normal(normal=norm, swap_axis=config.swap_yz)
-                need_uv = not work_vert.set_uv(uv)
+                need_uv = not work_vert.set_uv(uv, panel_adjust=scene.orbiter_is_2d_panel)
 
                 config.log_debug("{} Pidx:Tri[{}, {}][N {}, V {}]".format(
                     work_vert, poly_index, corner_vert, need_norm, need_uv))
                 if need_norm or need_uv:
                     #  duplicate vert.
-                    new_vert = Vertex.from_Vertex(work_vert, norm, uv, config.swap_yz)
+                    new_vert = Vertex.from_Vertex(work_vert, norm, uv, config.swap_yz, scene.orbiter_is_2d_panel)
                     new_key = len(self.vertices_dict.keys())
                     self.vertices_dict[new_key] = new_vert
                     export_tri_face[corner_idx] = new_key

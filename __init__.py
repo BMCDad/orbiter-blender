@@ -33,11 +33,12 @@
 #   2.0.11      - Export: Add Sort method that allows mesh group sort by name.
 #               - Export: When exporting selected objects, only include those materials/textures in file.
 #   2.0.12      - Export: Fix material sort order issue.
+#   2.1.0       - Export: Add support for 2D panel mesh scenes.
 
 bl_info = {
     "name": "Orbiter Mesh Tools",
     "author": "Blake Christensen",
-    "version": (2, 0, 12),
+    "version": (2, 1, 0),
     "blender": (2, 81, 0),
     "location": "",
     "description": "Tools for building Orbiter mesh files.",
@@ -374,6 +375,8 @@ class OBJECT_PT_OrbiterScene(bpy.types.Panel):
         row.prop(scene, "orbiter_create_mesh_file")
         row = layout.row()
         row.prop(scene, "orbiter_scene_namespace")
+        row = layout.row()
+        row.prop(scene, "orbiter_is_2d_panel")
 
 
 classes = {
@@ -429,6 +432,10 @@ def register():
     bpy.types.Scene.orbiter_scene_namespace = bpy.props.StringProperty(
         name="Scene Namespace",
         description="Namespace for this scene in the include file")
+    bpy.types.Scene.orbiter_is_2d_panel = bpy.props.BoolProperty(
+        name="Is Scene 2D panel",
+        description="If True, modifies UV values for flat panel textures.",
+        default=False)
 
     # These props are only referenced from scene[0] this
     # seems to be the best place to put general settings.
@@ -541,6 +548,7 @@ def unregister():
     del bpy.types.Scene.orbiter_create_mesh_file
     del bpy.types.Scene.orbiter_scene_namespace
     del bpy.types.Scene.orbiter_build_include_file
+    del bpy.types.Scene.orbiter_is_2d_panel    
     del bpy.types.Scene.orbiter_verbose
     del bpy.types.Scene.orbiter_include_path
     del bpy.types.Scene.orbiter_mesh_path

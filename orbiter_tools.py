@@ -113,9 +113,25 @@ class Vertex:
     def from_BlenderVertex(cls, blvert, world_matrix, swap_axis=True, is_2d_panel=False):
         nv = cls()
         tv = world_matrix @ blvert.co  #  Transform
-        nv.x = tv.x if swap_axis or is_2d_panel else 0 - tv.x
-        nv.y = tv.z if swap_axis else tv.y
-        nv.z = tv.y if swap_axis else tv.z
+
+        # Handle the permutations of swap_axis and is_2d_panel.
+        if swap_axis and not is_2d_panel:
+            nv.x = tv.x
+            nv.y = tv.z
+            nv.z = tv.y
+        elif swap_axis and is_2d_panel:
+            nv.x = tv.x
+            nv.y = -tv.z
+            nv.z = 0.0
+        elif is_2d_panel and not swap_axis:
+            nv.x = tv.x
+            nv.y = tv.y
+            nv.z = 0.0
+        else:
+            nv.x = -tv.x
+            nv.y = tv.y
+            nv.z = tv.z
+        
         nv.world_matrix = world_matrix
         return nv
 
@@ -126,10 +142,24 @@ class Vertex:
         nv.y = Vertex.y
         nv.z = Vertex.z
 
+        # Handle the permutations of swap_axis and is_2d_panel.
         if normal:
-            nv.nx = normal.x if swap_axis or is_2d_panel else 0 - normal.x
-            nv.ny = normal.z if swap_axis else normal.y
-            nv.nz = normal.y if swap_axis else normal.z
+            if swap_axis and not is_2d_panel:
+                nv.nx = normal.x
+                nv.ny = normal.z
+                nv.nz = normal.y
+            elif swap_axis and is_2d_panel:
+                nv.nx = normal.x
+                nv.ny = -normal.z
+                nv.nz = 0.0
+            elif is_2d_panel and not swap_axis:
+                nv.nx = normal.x
+                nv.ny = normal.y
+                nv.nz = 0.0
+            else:
+                nv.nx = -normal.x
+                nv.ny = normal.y
+                nv.nz = normal.z
         
         if uv:
             nv.u = uv[0]
@@ -173,7 +203,8 @@ class Vertex:
             return True
 
         nu = uv[0]
-        nv = uv[1] if panel_adjust else (1 - uv[1])
+        #nv = uv[1] if panel_adjust else (1 - uv[1])
+        nv = (1 - uv[1])
 
         if (self.u is None) or (self.v is None):
             self.u = nu
@@ -499,12 +530,16 @@ def build_include(config, scene, groups, texNames):
         if object.orbiter_include_position:
             ov = object.location
             config.write_to_include(
-                '    const VECTOR3 {} = '.format(
+                '    constexpr VECTOR3 {} = '.format(
                     config.name_pattern_location.format(object.name)))
             # swap y - z
             if config.swap_yz:
-                config.write_to_include(
-                    '    {{{:.4f}, {:.4f}, {:.4f}}};\n'.format(ov.x, ov.z, ov.y))
+                if scene.orbiter_is_2d_panel:
+                    config.write_to_include(
+                        '    {{{:.4f}, {:.4f}, {:.4f}}};\n'.format(ov.x, 0 - ov.z, ov.y))
+                else:
+                    config.write_to_include(
+                        '    {{{:.4f}, {:.4f}, {:.4f}}};\n'.format(ov.x, ov.z, ov.y))
             else:
                 config.write_to_include(
                     '    {{{:.4f}, {:.4f}, {:.4f}}};\n'.format(0 - ov.x, ov.y, ov.z))
@@ -514,16 +549,22 @@ def build_include(config, scene, groups, texNames):
             q_mesh = object.to_mesh(preserve_all_data_layers=True)
             if len(q_mesh.vertices) == 4:
                 q_mesh.calc_loop_triangles()
-                for vert_idx in q_mesh.vertices:
-                    ex_vert = Vertex.from_BlenderVertex(q_mesh.vertices[vert_idx], object.matrix_world, config.swap_yz)
+                for vert_idx, vert in enumerate(q_mesh.vertices):
+                    ex_vert = Vertex.from_BlenderVertex(vert, object.matrix_world, config.swap_yz, scene.orbiter_is_2d_panel)
                     config.write_to_include(
                         '    const VECTOR3 {}_QUAD_{} = '.format(object.name, vert_idx))
                     config.write_to_include(
                         '    {{{:.4f}, {:.4f}, {:.4f}}};\n'.format(
                             ex_vert.x, ex_vert.y, ex_vert.z))
-
             object.to_mesh_clear()
 
+        if object.orbiter_include_size:
+            config.write_to_include('    const double {}_Width = {};\n'.format(object.name, object.dimensions.x))
+            config.write_to_include('    const double {}_Height = {};\n'.format(object.name, object.dimensions.z))
+
+            
+
+                
     config.write_to_include("\n  }\n")    # close namespace
 
 

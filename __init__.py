@@ -302,6 +302,8 @@ class OBJECT_PT_OrbiterObject(bpy.types.Panel):
         if obj.type == 'MESH':
             row = layout.row()
             row.prop(obj, "orbiter_include_quad", text="Output quad.")
+            row = layout.row()
+            row.prop(obj, "orbiter_include_size", text="Include width and height.")
 
 
 class OBJECT_PT_OrbiterOutput(bpy.types.Panel):
@@ -422,6 +424,10 @@ def register():
     bpy.types.Object.orbiter_include_vertex_array = bpy.props.BoolProperty(
         name="Include Vertex Array",
         description="Include object vertices as an array of NTVERTEX values.",
+        default=False)
+    bpy.types.Object.orbiter_include_size = bpy.props.BoolProperty(
+        name="Include Width and Height",
+        description="Include object width and height in Blender units.",
         default=False)
 
     # Scene properties:
@@ -565,6 +571,7 @@ def unregister():
     del bpy.types.Material.orbiter_emit_color
     del bpy.types.Object.orbiter_include_quad
     del bpy.types.Object.orbiter_include_vertex_array
+    del bpy.types.Object.orbiter_include_size
     del bpy.types.Object.orbiter_mesh_flag
     del bpy.types.Material.orbiter_is_dynamic
 

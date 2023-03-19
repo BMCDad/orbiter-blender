@@ -115,10 +115,18 @@ class Vertex:
         tv = world_matrix @ blvert.co  #  Transform
 
         # Handle the permutations of swap_axis and is_2d_panel.
-        if swap_axis:
+        if swap_axis and not is_2d_panel:
             nv.x = tv.x
             nv.y = tv.z
             nv.z = tv.y
+        elif swap_axis and is_2d_panel:
+            nv.x = tv.x
+            nv.y = -tv.z
+            nv.z = 0.0
+        elif is_2d_panel and not swap_axis:
+            nv.x = tv.x
+            nv.y = tv.y
+            nv.z = 0.0
         else:
             nv.x = -tv.x
             nv.y = tv.y
@@ -136,10 +144,18 @@ class Vertex:
 
         # Handle the permutations of swap_axis and is_2d_panel.
         if normal:
-            if swap_axis:
+            if swap_axis and not is_2d_panel:
                 nv.nx = normal.x
                 nv.ny = normal.z
                 nv.nz = normal.y
+            elif swap_axis and is_2d_panel:
+                nv.nx = normal.x
+                nv.ny = -normal.z
+                nv.nz = 0.0
+            elif is_2d_panel and not swap_axis:
+                nv.nx = normal.x
+                nv.ny = normal.y
+                nv.nz = 0.0
             else:
                 nv.nx = -normal.x
                 nv.ny = normal.y
@@ -188,7 +204,7 @@ class Vertex:
 
         nu = uv[0]
         #nv = uv[1] if panel_adjust else (1 - uv[1])
-        nv = uv[1] if panel_adjust else (1 - uv[1])
+        nv = (1 - uv[1])
 
         if (self.u is None) or (self.v is None):
             self.u = nu

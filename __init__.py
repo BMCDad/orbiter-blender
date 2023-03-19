@@ -304,6 +304,8 @@ class OBJECT_PT_OrbiterObject(bpy.types.Panel):
             row.prop(obj, "orbiter_include_quad", text="Output quad.")
             row = layout.row()
             row.prop(obj, "orbiter_include_size", text="Include width and height.")
+            row = layout.row()
+            row.prop(obj, "orbiter_include_rect", text="Include RECT.")
 
 
 class OBJECT_PT_OrbiterOutput(bpy.types.Panel):
@@ -428,6 +430,10 @@ def register():
     bpy.types.Object.orbiter_include_size = bpy.props.BoolProperty(
         name="Include Width and Height",
         description="Include object width and height in Blender units.",
+        default=False)
+    bpy.types.Object.orbiter_include_rect = bpy.props.BoolProperty(
+        name="Include RECT",
+        description="Include object RECT based on X-Z dimensions and centered origin.",
         default=False)
 
     # Scene properties:
@@ -572,6 +578,7 @@ def unregister():
     del bpy.types.Object.orbiter_include_quad
     del bpy.types.Object.orbiter_include_vertex_array
     del bpy.types.Object.orbiter_include_size
+    del bpy.types.Object.orbiter_include_rect
     del bpy.types.Object.orbiter_mesh_flag
     del bpy.types.Material.orbiter_is_dynamic
 

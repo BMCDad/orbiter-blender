@@ -562,7 +562,15 @@ def build_include(config, scene, groups, texNames):
             config.write_to_include('    const double {}_Width = {};\n'.format(object.name, object.dimensions.x))
             config.write_to_include('    const double {}_Height = {};\n'.format(object.name, object.dimensions.z))
 
-            
+        if object.orbiter_include_rect:
+            # for now, assuming a principal plane of X-Z
+            rleft = object.location.x - object.dimensions.x / 2
+            rright = object.location.x + object.dimensions.x / 2
+            rtop = 0 - (object.location.z + object.dimensions.z / 2)
+            rbot = 0 - (object.location.z - object.dimensions.z / 2)
+            config.write_to_include(
+                        '    constexpr RECT {}_RC = {{{:d}, {:d}, {:d}, {:d}}};\n'.format(
+                            object.name, int(rleft), int(rtop), int(rright), int(rbot)))
 
                 
     config.write_to_include("\n  }\n")    # close namespace

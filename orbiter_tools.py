@@ -115,22 +115,47 @@ class Vertex:
         tv = world_matrix @ blvert.co  #  Transform
 
         # Handle the permutations of swap_axis and is_2d_panel.
-        if swap_axis and not is_2d_panel:
+        
+        # Normal mesh, no 2d panel:
+        # swap_axis=true (default) means we need to swap the y and z
+        # values.  If false, we need to modify x to be the negative
+        # value (opposite) so that the handedness matches Orbiter.
+        # 2d panel:
+        
+        # For 2d_panels, if swap_axis=true, we assume the panel mesh
+        # is laid out in the z/x plane, with the mesh extending down
+        # from the x axis.  This is for convenience in modelling.  In
+        # that case, we leave x as is, and replace y with the -z axis
+        # (oposite sign).
+        # For swap_axis=false, we assume the panel is laid out in the 
+        # x/y plane with the x values in the negative x plane.  In this
+        # case we need to swap the x values to get correct handedness.
+
+        if swap_axis:
             nv.x = tv.x
-            nv.y = tv.z
-            nv.z = tv.y
-        elif swap_axis and is_2d_panel:
-            nv.x = tv.x
-            nv.y = -tv.z
-            nv.z = 0.0
-        elif is_2d_panel and not swap_axis:
-            nv.x = tv.x
-            nv.y = tv.y
-            nv.z = 0.0
+            nv.y = -tv.z if is_2d_panel else tv.z
+            nv.z = 0.0 if is_2d_panel else tv.y
         else:
-            nv.x = -tv.x
+            nv.x = tv.x if is_2d_panel else -tv.x
             nv.y = tv.y
-            nv.z = tv.z
+            nv.z = 0.0 if is_2d_panel else tv.z
+
+        # if swap_axis and not is_2d_panel:
+        #     nv.x = tv.x
+        #     nv.y = tv.z
+        #     nv.z = tv.y
+        # elif swap_axis and is_2d_panel:
+        #     nv.x = tv.x
+        #     nv.y = -tv.z
+        #     nv.z = 0.0
+        # elif is_2d_panel and not swap_axis:
+        #     nv.x = tv.x
+        #     nv.y = tv.y
+        #     nv.z = 0.0
+        # else:
+        #     nv.x = -tv.x
+        #     nv.y = tv.y
+        #     nv.z = tv.z
         
         nv.world_matrix = world_matrix
         return nv
@@ -143,23 +168,34 @@ class Vertex:
         nv.z = Vertex.z
 
         # Handle the permutations of swap_axis and is_2d_panel.
-        if normal:
-            if swap_axis and not is_2d_panel:
-                nv.nx = normal.x
-                nv.ny = normal.z
-                nv.nz = normal.y
-            elif swap_axis and is_2d_panel:
-                nv.nx = normal.x
-                nv.ny = -normal.z
-                nv.nz = 0.0
-            elif is_2d_panel and not swap_axis:
-                nv.nx = normal.x
-                nv.ny = normal.y
-                nv.nz = 0.0
-            else:
-                nv.nx = -normal.x
-                nv.ny = normal.y
-                nv.nz = normal.z
+        # Same as from_BlenderVertex (above), see notes.
+
+        if swap_axis:
+            nv.nx = normal.x
+            nv.ny = -normal.z if is_2d_panel else normal.z
+            nv.nz = 0.0 if is_2d_panel else normal.y
+        else:
+            nv.nx = normal.x if is_2d_panel else -normal.x
+            nv.ny = normal.y
+            nv.nz = 0.0 if is_2d_panel else normal.z
+
+        # if normal:
+        #     if swap_axis and not is_2d_panel:
+        #         nv.nx = normal.x
+        #         nv.ny = normal.z
+        #         nv.nz = normal.y
+        #     elif swap_axis and is_2d_panel:
+        #         nv.nx = normal.x
+        #         nv.ny = -normal.z
+        #         nv.nz = 0.0
+        #     elif is_2d_panel and not swap_axis:
+        #         nv.nx = normal.x
+        #         nv.ny = normal.y
+        #         nv.nz = 0.0
+        #     else:
+        #         nv.nx = -normal.x
+        #         nv.ny = normal.y
+        #         nv.nz = normal.z
         
         if uv:
             nv.u = uv[0]

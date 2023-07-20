@@ -84,7 +84,7 @@ class OrbiterBuildMesh(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.mode is not 'EDIT_MESH'
+        return context.mode != 'EDIT_MESH'
 
     def execute(self, context):
         print("Orbiter Build Mesh called.")
@@ -184,7 +184,7 @@ class IMPORT_OT_OrbiterMesh(bpy.types.Operator, ImportHelper):
 
     @classmethod
     def poll(cls, context):
-        return context.mode is not 'EDIT_MESH'
+        return context.mode != 'EDIT_MESH'
 
     def execute(self, context):
         print("Import Orbiter Mesh started.")

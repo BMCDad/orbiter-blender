@@ -481,7 +481,9 @@ def get_log_folder():
     Determines the log folder, which is the current .blend folder if the
     current file is saved, otherwise it is the os TEMP folder.
     """
-    return bpy.path.abspath("//") if bpy.data.is_saved else os.environ['TEMP']
+    bpy_tmpdir = bpy.app.tempdir
+    tmpdir = os.environ.get('TEMP', bpy_tmpdir)
+    return bpy.path.abspath("//") if bpy.data.is_saved else tmpdir
 
 
 def build_file_path(path, filename, extension):

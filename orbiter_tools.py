@@ -112,7 +112,8 @@ class Vertex:
     @classmethod
     def from_BlenderVertex(cls, blvert, world_matrix, swap_axis=True, is_2d_panel=False):
         nv = cls()
-        tv = world_matrix @ blvert.co  #  Transform
+        #tv = world_matrix @ blvert.co  #  Transform
+        tv = blvert.co
 
         # Handle the permutations of swap_axis and is_2d_panel.
         
@@ -362,6 +363,7 @@ class MeshGroup:
         object_eval = mesh_object.evaluated_get(depsgraph=deps)
         temp_mesh = object_eval.to_mesh()
         temp_mesh.validate()  # To fix a possibly invalid mesh.  This seems to help.
+        temp_mesh.transform(self.matrix_world)
         temp_mesh.calc_loop_triangles()  #  Orbiter needs triangles, so turn all polygons to tris.
         
         #  Calc split normals here, even if not using auto smooth, this will put

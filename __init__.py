@@ -34,11 +34,12 @@
 #               - Export: When exporting selected objects, only include those materials/textures in file.
 #   2.0.12      - Export: Fix material sort order issue.
 #   2.1.0       - Export: Add support for 2D panel mesh scenes.
+#   2.1.1       - Fix issue with mesh to world transform not picking up normals.
 
 bl_info = {
     "name": "Orbiter Mesh Tools",
     "author": "Blake Christensen",
-    "version": (2, 1, 0),
+    "version": (2, 1, 1),
     "blender": (2, 81, 0),
     "location": "",
     "description": "Tools for building Orbiter mesh files.",

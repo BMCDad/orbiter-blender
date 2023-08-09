@@ -110,30 +110,97 @@ class Vertex:
         self.v = None
 
     @classmethod
-    def from_BlenderVertex(cls, blvert, world_matrix, swap_axis=True):
+    def from_BlenderVertex(cls, blvert, world_matrix, swap_axis=True, is_2d_panel=False):
         nv = cls()
-        tv = world_matrix @ blvert.co  #  Transform
-        nv.x = tv.x if swap_axis else 0 - tv.x
-        nv.y = tv.z if swap_axis else tv.y
-        nv.z = tv.y if swap_axis else tv.z
+        #tv = world_matrix @ blvert.co  #  Transform
+        tv = blvert.co
+
+        # Handle the permutations of swap_axis and is_2d_panel.
+        
+        # Normal mesh, no 2d panel:
+        # swap_axis=true (default) means we need to swap the y and z
+        # values.  If false, we need to modify x to be the negative
+        # value (opposite) so that the handedness matches Orbiter.
+        # 2d panel:
+        
+        # For 2d_panels, if swap_axis=true, we assume the panel mesh
+        # is laid out in the z/x plane, with the mesh extending down
+        # from the x axis.  This is for convenience in modelling.  In
+        # that case, we leave x as is, and replace y with the -z axis
+        # (oposite sign).
+        # For swap_axis=false, we assume the panel is laid out in the 
+        # x/y plane with the x values in the negative x plane.  In this
+        # case we need to swap the x values to get correct handedness.
+
+        if swap_axis:
+            nv.x = tv.x
+            nv.y = -tv.z if is_2d_panel else tv.z
+            nv.z = 0.0 if is_2d_panel else tv.y
+        else:
+            nv.x = tv.x if is_2d_panel else -tv.x
+            nv.y = tv.y
+            nv.z = 0.0 if is_2d_panel else tv.z
+
+        # if swap_axis and not is_2d_panel:
+        #     nv.x = tv.x
+        #     nv.y = tv.z
+        #     nv.z = tv.y
+        # elif swap_axis and is_2d_panel:
+        #     nv.x = tv.x
+        #     nv.y = -tv.z
+        #     nv.z = 0.0
+        # elif is_2d_panel and not swap_axis:
+        #     nv.x = tv.x
+        #     nv.y = tv.y
+        #     nv.z = 0.0
+        # else:
+        #     nv.x = -tv.x
+        #     nv.y = tv.y
+        #     nv.z = tv.z
+        
         nv.world_matrix = world_matrix
         return nv
 
     @classmethod
-    def from_Vertex(cls, Vertex, normal=None, uv=None, swap_axis=True):
+    def from_Vertex(cls, Vertex, normal=None, uv=None, swap_axis=True, is_2d_panel=False):
         nv = cls()
         nv.x = Vertex.x  #  World transform and swap has already been done
         nv.y = Vertex.y
         nv.z = Vertex.z
 
-        if normal:
-            nv.nx = normal.x if swap_axis else 0 - normal.x
-            nv.ny = normal.z if swap_axis else normal.y
-            nv.nz = normal.y if swap_axis else normal.z
+        # Handle the permutations of swap_axis and is_2d_panel.
+        # Same as from_BlenderVertex (above), see notes.
+
+        if swap_axis:
+            nv.nx = normal.x
+            nv.ny = -normal.z if is_2d_panel else normal.z
+            nv.nz = 0.0 if is_2d_panel else normal.y
+        else:
+            nv.nx = normal.x if is_2d_panel else -normal.x
+            nv.ny = normal.y
+            nv.nz = 0.0 if is_2d_panel else normal.z
+
+        # if normal:
+        #     if swap_axis and not is_2d_panel:
+        #         nv.nx = normal.x
+        #         nv.ny = normal.z
+        #         nv.nz = normal.y
+        #     elif swap_axis and is_2d_panel:
+        #         nv.nx = normal.x
+        #         nv.ny = -normal.z
+        #         nv.nz = 0.0
+        #     elif is_2d_panel and not swap_axis:
+        #         nv.nx = normal.x
+        #         nv.ny = normal.y
+        #         nv.nz = 0.0
+        #     else:
+        #         nv.nx = -normal.x
+        #         nv.ny = normal.y
+        #         nv.nz = normal.z
         
         if uv:
             nv.u = uv[0]
-            nv.v = 1 - uv[1]
+            nv.v = uv[1] if is_2d_panel else 1 - uv[1]
 
         return nv
 
@@ -164,7 +231,7 @@ class Vertex:
 
         return result
 
-    def set_uv(self, uv, tolerance = 0.001):
+    def set_uv(self, uv, panel_adjust = False, tolerance = 0.001):
         """
         Set the u,v value of the vertex if not set.
         Return True if the uv value matches the uv value passed in.
@@ -172,12 +239,16 @@ class Vertex:
         if uv is None:
             return True
 
+        nu = uv[0]
+        #nv = uv[1] if panel_adjust else (1 - uv[1])
+        nv = (1 - uv[1])
+
         if (self.u is None) or (self.v is None):
-            self.u = uv[0]
-            self.v = 1 - uv[1]
+            self.u = nu
+            self.v = nv
             return True
 
-        return (abs(self.u - uv[0]) < tolerance) and (abs(self.v - (1 - uv[1])) < tolerance)
+        return (abs(self.u - nu) < tolerance) and (abs(self.v - nv) < tolerance)
 
     def set_normal(self, normal, tolerance = 0.001, swap_axis = True):
         """
@@ -292,13 +363,14 @@ class MeshGroup:
         object_eval = mesh_object.evaluated_get(depsgraph=deps)
         temp_mesh = object_eval.to_mesh()
         temp_mesh.validate()  # To fix a possibly invalid mesh.  This seems to help.
+        temp_mesh.transform(self.matrix_world)
         temp_mesh.calc_loop_triangles()  #  Orbiter needs triangles, so turn all polygons to tris.
         
         #  Calc split normals here, even if not using auto smooth, this will put
         #  the normals in the mesh.loops collection where we can read them.
         temp_mesh.calc_normals_split()
 
-        self.vertices_dict = {v.index:Vertex.from_BlenderVertex(v, self.matrix_world, config.swap_yz) for v in temp_mesh.vertices}
+        self.vertices_dict = {v.index:Vertex.from_BlenderVertex(v, self.matrix_world, config.swap_yz, scene.orbiter_is_2d_panel) for v in temp_mesh.vertices}
         # for vertex in temp_mesh.vertices:
         #     self.vertices_dict[vertex.index] = Vertex.from_BlenderVertex(vertex, self.matrix_world)
 
@@ -353,13 +425,13 @@ class MeshGroup:
                 work_vert = self.vertices_dict[corner_vert]
 
                 need_norm = not work_vert.set_normal(normal=norm, swap_axis=config.swap_yz)
-                need_uv = not work_vert.set_uv(uv)
+                need_uv = not work_vert.set_uv(uv, panel_adjust=scene.orbiter_is_2d_panel)
 
                 config.log_debug("{} Pidx:Tri[{}, {}][N {}, V {}]".format(
                     work_vert, poly_index, corner_vert, need_norm, need_uv))
                 if need_norm or need_uv:
                     #  duplicate vert.
-                    new_vert = Vertex.from_Vertex(work_vert, norm, uv, config.swap_yz)
+                    new_vert = Vertex.from_Vertex(work_vert, norm, uv, config.swap_yz, scene.orbiter_is_2d_panel)
                     new_key = len(self.vertices_dict.keys())
                     self.vertices_dict[new_key] = new_vert
                     export_tri_face[corner_idx] = new_key
@@ -498,12 +570,16 @@ def build_include(config, scene, groups, texNames):
         if object.orbiter_include_position:
             ov = object.location
             config.write_to_include(
-                '    const VECTOR3 {} = '.format(
+                '    constexpr VECTOR3 {} = '.format(
                     config.name_pattern_location.format(object.name)))
             # swap y - z
             if config.swap_yz:
-                config.write_to_include(
-                    '    {{{:.4f}, {:.4f}, {:.4f}}};\n'.format(ov.x, ov.z, ov.y))
+                if scene.orbiter_is_2d_panel:
+                    config.write_to_include(
+                        '    {{{:.4f}, {:.4f}, {:.4f}}};\n'.format(ov.x, 0 - ov.z, ov.y))
+                else:
+                    config.write_to_include(
+                        '    {{{:.4f}, {:.4f}, {:.4f}}};\n'.format(ov.x, ov.z, ov.y))
             else:
                 config.write_to_include(
                     '    {{{:.4f}, {:.4f}, {:.4f}}};\n'.format(0 - ov.x, ov.y, ov.z))
@@ -513,16 +589,30 @@ def build_include(config, scene, groups, texNames):
             q_mesh = object.to_mesh(preserve_all_data_layers=True)
             if len(q_mesh.vertices) == 4:
                 q_mesh.calc_loop_triangles()
-                for vert_idx in q_mesh.vertices:
-                    ex_vert = Vertex.from_BlenderVertex(q_mesh.vertices[vert_idx], object.matrix_world, config.swap_yz)
+                for vert_idx, vert in enumerate(q_mesh.vertices):
+                    ex_vert = Vertex.from_BlenderVertex(vert, object.matrix_world, config.swap_yz, scene.orbiter_is_2d_panel)
                     config.write_to_include(
                         '    const VECTOR3 {}_QUAD_{} = '.format(object.name, vert_idx))
                     config.write_to_include(
                         '    {{{:.4f}, {:.4f}, {:.4f}}};\n'.format(
                             ex_vert.x, ex_vert.y, ex_vert.z))
-
             object.to_mesh_clear()
 
+        if object.orbiter_include_size:
+            config.write_to_include('    const double {}_Width = {};\n'.format(object.name, object.dimensions.x))
+            config.write_to_include('    const double {}_Height = {};\n'.format(object.name, object.dimensions.z))
+
+        if object.orbiter_include_rect:
+            # for now, assuming a principal plane of X-Z
+            rleft = object.location.x - object.dimensions.x / 2
+            rright = object.location.x + object.dimensions.x / 2
+            rtop = 0 - (object.location.z + object.dimensions.z / 2)
+            rbot = 0 - (object.location.z - object.dimensions.z / 2)
+            config.write_to_include(
+                        '    constexpr RECT {}_RC = {{{:d}, {:d}, {:d}, {:d}}};\n'.format(
+                            object.name, int(rleft), int(rtop), int(rright), int(rbot)))
+
+                
     config.write_to_include("\n  }\n")    # close namespace
 
 

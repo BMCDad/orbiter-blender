@@ -3,7 +3,7 @@
 Orbiter Mesh Tools is a [Blender](https://www.blender.org/) add-on for generating [Orbiter](http://orbit.medphys.ucl.ac.uk/index.html) mesh files.  It will also, optionally, generate a C++ source file for the mesh being created.
 
 ## Compatibility:
-Blender 2.82.
+Blender 2.82 - 3.5.0.
 
 
 ## Getting Started
@@ -63,18 +63,26 @@ If you want to mimic the use of vertex normals, you can do this by telling Blend
 
 ***Scene Namespace:*** The namespace for values from this scene that will be written to the include file.  By default this will be the name of the scene but can be changed to whatever is convenient.
 
+***Is Scene 2D Panel:*** If checked, this scene will adjust the axis values so that the mesh file for this scene can be used as a 2D panel.  
+
 ### Object Panel
 ***Name:*** The name of the currently selected object.
 
-***OrbiterSortOrder:*** Controls the sort order for the object in the mesh file.  Default is 50.  Higher numbers will move that object later in the mesh file.  This is used to control render order of transparent objects.  An object with transparency should be given a higher value then other objects it may appear in front of.
+***Sort Order:*** Controls the sort order for the object in the mesh file.  Default is 50.  Higher numbers will move that object later in the mesh file.  This is used to control render order of transparent objects.  An object with transparency should be given a higher value then other objects it may appear in front of.
 
-***OrbiterMeshFlag:*** Sets the Orbiter mesh flag value.  See Orbiter SDK for values.
+***Mesh Flag:*** Sets the Orbiter mesh flag value.  See Orbiter SDK for values.
 
-***Output Location:*** Output object location as a const VECTOR3 value.
+***Include Position:*** Output object location as a const VECTOR3 value.
 
-***Output Vertex Array:*** Output the object vertices as an array of NTVERTEX values.
+***Include Vertex Array:*** Output the object vertices as an array of NTVERTEX values.
 
 ***Output quad:*** If the object is a plane it will output VECTOR3 values for each corner.  These can be used to setup a ‘hit’ rectangle.
+
+***Include Width and Height:*** Output a width and height variable for the object in the include file.  Width is the size of the X axis, and height is the Y axis.  Useful for 2d panel development.
+
+***Include RECT:*** Output a RECT structure for this object.  Assumes the object is a simple plane with four vertices.
+
+***Output
 
 ### Material Panel
 ***Diffuse Color:*** Orbiter diffuse color.

@@ -33,11 +33,13 @@
 #   2.0.11      - Export: Add Sort method that allows mesh group sort by name.
 #               - Export: When exporting selected objects, only include those materials/textures in file.
 #   2.0.12      - Export: Fix material sort order issue.
+#   2.1.0       - Export: Add support for 2D panel mesh scenes.
+#   2.1.1       - Fix issue with mesh to world transform not picking up normals.
 
 bl_info = {
     "name": "Orbiter Mesh Tools",
     "author": "Blake Christensen",
-    "version": (2, 0, 12),
+    "version": (2, 1, 1),
     "blender": (2, 81, 0),
     "location": "",
     "description": "Tools for building Orbiter mesh files.",
@@ -83,7 +85,7 @@ class OrbiterBuildMesh(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.mode is not 'EDIT_MESH'
+        return context.mode != 'EDIT_MESH'
 
     def execute(self, context):
         print("Orbiter Build Mesh called.")
@@ -183,7 +185,7 @@ class IMPORT_OT_OrbiterMesh(bpy.types.Operator, ImportHelper):
 
     @classmethod
     def poll(cls, context):
-        return context.mode is not 'EDIT_MESH'
+        return context.mode != 'EDIT_MESH'
 
     def execute(self, context):
         print("Import Orbiter Mesh started.")
@@ -301,6 +303,10 @@ class OBJECT_PT_OrbiterObject(bpy.types.Panel):
         if obj.type == 'MESH':
             row = layout.row()
             row.prop(obj, "orbiter_include_quad", text="Output quad.")
+            row = layout.row()
+            row.prop(obj, "orbiter_include_size", text="Include width and height.")
+            row = layout.row()
+            row.prop(obj, "orbiter_include_rect", text="Include RECT.")
 
 
 class OBJECT_PT_OrbiterOutput(bpy.types.Panel):
@@ -374,6 +380,8 @@ class OBJECT_PT_OrbiterScene(bpy.types.Panel):
         row.prop(scene, "orbiter_create_mesh_file")
         row = layout.row()
         row.prop(scene, "orbiter_scene_namespace")
+        row = layout.row()
+        row.prop(scene, "orbiter_is_2d_panel")
 
 
 classes = {
@@ -420,6 +428,14 @@ def register():
         name="Include Vertex Array",
         description="Include object vertices as an array of NTVERTEX values.",
         default=False)
+    bpy.types.Object.orbiter_include_size = bpy.props.BoolProperty(
+        name="Include Width and Height",
+        description="Include object width and height in Blender units.",
+        default=False)
+    bpy.types.Object.orbiter_include_rect = bpy.props.BoolProperty(
+        name="Include RECT",
+        description="Include object RECT based on X-Z dimensions and centered origin.",
+        default=False)
 
     # Scene properties:
     bpy.types.Scene.orbiter_create_mesh_file = bpy.props.BoolProperty(
@@ -429,6 +445,10 @@ def register():
     bpy.types.Scene.orbiter_scene_namespace = bpy.props.StringProperty(
         name="Scene Namespace",
         description="Namespace for this scene in the include file")
+    bpy.types.Scene.orbiter_is_2d_panel = bpy.props.BoolProperty(
+        name="Is Scene 2D panel",
+        description="If True, modifies UV values for flat panel textures.",
+        default=False)
 
     # These props are only referenced from scene[0] this
     # seems to be the best place to put general settings.
@@ -541,6 +561,7 @@ def unregister():
     del bpy.types.Scene.orbiter_create_mesh_file
     del bpy.types.Scene.orbiter_scene_namespace
     del bpy.types.Scene.orbiter_build_include_file
+    del bpy.types.Scene.orbiter_is_2d_panel    
     del bpy.types.Scene.orbiter_verbose
     del bpy.types.Scene.orbiter_include_path
     del bpy.types.Scene.orbiter_mesh_path
@@ -557,6 +578,8 @@ def unregister():
     del bpy.types.Material.orbiter_emit_color
     del bpy.types.Object.orbiter_include_quad
     del bpy.types.Object.orbiter_include_vertex_array
+    del bpy.types.Object.orbiter_include_size
+    del bpy.types.Object.orbiter_include_rect
     del bpy.types.Object.orbiter_mesh_flag
     del bpy.types.Material.orbiter_is_dynamic
 

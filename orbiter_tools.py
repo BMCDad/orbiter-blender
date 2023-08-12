@@ -36,7 +36,8 @@ class OrbiterBuildSettings:
                  debug=False,
                  export_selected=False,
                  swap_yz=True,
-                 sort_method='Sort Order'):
+                 sort_method='Sort Order',
+                 exclude_hidden_render=False):
 
         self.mesh_path = mesh_path_file
         self.verbose = verbose
@@ -45,6 +46,7 @@ class OrbiterBuildSettings:
         self.swap_yz = swap_yz
         self.sort_method = sort_method
         self.build_include_file = build_include_file
+        self.exclude_hidden_render = exclude_hidden_render
         self.include_path_file = bpy.path.abspath(include_path_file)
         self.name_pattern_location = name_pattern_location
         self.name_pattern_verts = name_pattern_verts
@@ -375,7 +377,7 @@ class MeshGroup:
         #     self.vertices_dict[vertex.index] = Vertex.from_BlenderVertex(vertex, self.matrix_world)
 
         start_vert_count = len(temp_mesh.vertices)
-        config.log_line("Parsing mesh: {}, Vertices: {}".format(temp_mesh.name, start_vert_count))
+        config.log_line("Parsing mesh: {}, Vertices: {}".format(object_eval.name, start_vert_count))
 
         has_uv = False
         if (temp_mesh.uv_layers and 
@@ -443,7 +445,7 @@ class MeshGroup:
 
         self.triangles_list.extend(export_faces)
         config.log_line("Finished parsing mesh: {}, Verts: {} to {}".format(
-            temp_mesh.name, start_vert_count, len(self.vertices_dict)))
+            object_eval.name, start_vert_count, len(self.vertices_dict)))
 
         if len(temp_mesh.materials) > 0:
             self.mat_name = temp_mesh.materials[0].name
@@ -628,6 +630,13 @@ def export_orbiter(config, scene):
         scene.orbiter_scene_namespace = scene.name
 
     exp_objects = bpy.context.selected_objects if config.export_selected else scene.objects
+
+    # further filter objects if hidden from renders
+    if config.exclude_hidden_render:
+        before_count = len(exp_objects)
+        exp_objects = [h for h in exp_objects if not h.hide_render]
+        config.log_line("Excluding {} hidden objects.".format(before_count - len(exp_objects)))
+
     config.log_line("Export selected: {}, looking at {} objects.".format(config.export_selected, len(exp_objects)))
     
     meshes = [m for m in exp_objects if m.type == 'MESH']

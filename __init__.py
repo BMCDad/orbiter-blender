@@ -37,11 +37,13 @@
 #   2.1.1       - Fix issue with mesh to world transform not picking up normals.
 #   2.1.2       - Export: Add new property 'Exclude objects 'hidden from render' from the mesh file.
 #               - Fix logging issue to get the object name being exported.
+#   2.1.3       - Export: Add new property 'parse material name'.
+#               - Fix path issue importing under linux.
 
 bl_info = {
     "name": "Orbiter Mesh Tools",
     "author": "Blake Christensen",
-    "version": (2, 1, 2),
+    "version": (2, 1, 3),
     "blender": (2, 81, 0),
     "location": "",
     "description": "Tools for building Orbiter mesh files.",
@@ -107,7 +109,8 @@ class OrbiterBuildMesh(bpy.types.Operator):
                 export_selected=home_scene.orbiter_export_selected,
                 swap_yz=home_scene.orbiter_swap_yz,
                 sort_method=home_scene.orbiter_export_sortmode,
-                exclude_hidden_render=home_scene.orbiter_exclude_hidden_from_render) as config:
+                exclude_hidden_render=home_scene.orbiter_exclude_hidden_from_render,
+                parse_material_name=home_scene.orbiter_parse_material_name) as config:
             
             config.log_line("Orbiter Tools Build Log - Date: {}".format(time.asctime()))
             config.log_line("Versions  Blender: {}  Blender Tools: {}".format(
@@ -119,6 +122,7 @@ class OrbiterBuildMesh(bpy.types.Operator):
             config.log_line("Swap YZ Axis: {}".format(config.swap_yz))
             config.log_line("Sorting method: {}".format(config.sort_method))
             config.log_line("Exclude hidden for render objects: {}".format(config.exclude_hidden_render))
+            config.log_line("Parse Material Name: {}".format(config.parse_material_name))
             if (config.build_include_file):
                 config.log_line("Include Path File: " + config.include_path_file)
                 config.log_line("Id name pattern: " + config.name_pattern_id)
@@ -368,6 +372,8 @@ class OBJECT_PT_OrbiterOutput(bpy.types.Panel):
         row = layout.row()
         row.prop(props_scene, "orbiter_exclude_hidden_from_render")
         row = layout.row()
+        row.prop(props_scene, "orbiter_parse_material_name")
+        row = layout.row()
         row.operator("orbiter.buildmesh", text="Build Mesh")
 
 
@@ -513,6 +519,10 @@ def register():
         name="Exclude Hidden From Render",
         description="Exclude an object from export mesh if hidden from render.",
         default=False)
+    bpy.types.Scene.orbiter_parse_material_name = bpy.props.BoolProperty(
+        name="Parse Material Name",
+        description="When building mesh, use Blender material name up to first _ only for Orbiter material name.",
+        default=False)
 
 
     # Material properties:
@@ -582,6 +592,7 @@ def unregister():
     del bpy.types.Scene.orbiter_swap_yz
     del bpy.types.Scene.orbiter_export_sortmode
     del bpy.types.Scene.orbiter_exclude_hidden_from_render
+    del bpy.types.Scene.orbiter_parse_material_name    
     del bpy.types.Material.orbiter_ambient_color
     del bpy.types.Material.orbiter_specular_color
     del bpy.types.Material.orbiter_specular_power

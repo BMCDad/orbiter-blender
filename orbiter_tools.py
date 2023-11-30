@@ -37,7 +37,8 @@ class OrbiterBuildSettings:
                  export_selected=False,
                  swap_yz=True,
                  sort_method='Sort Order',
-                 exclude_hidden_render=False):
+                 exclude_hidden_render=False,
+                 parse_material_name=False):
 
         self.mesh_path = mesh_path_file
         self.verbose = verbose
@@ -47,6 +48,7 @@ class OrbiterBuildSettings:
         self.sort_method = sort_method
         self.build_include_file = build_include_file
         self.exclude_hidden_render = exclude_hidden_render
+        self.parse_material_name = parse_material_name
         self.include_path_file = bpy.path.abspath(include_path_file)
         self.name_pattern_location = name_pattern_location
         self.name_pattern_verts = name_pattern_verts
@@ -496,7 +498,21 @@ def build_file_path(path, filename, extension):
     return bpy.path.abspath(fullpath)
 
 
-def output_material(mesh_file, material):
+def build_material_name(matname, parse_name):
+    # if parse_name is set, we will only include for the material name the part of the name
+    # up to the first _.  This is done before replacing the ' ' with '_'.  This is to help
+    # round-trip mesh files that may at some point be re-imported into Blender.
+    out_name = matname
+    if ('_' in out_name) and parse_name:
+        out_name = out_name[0:out_name.find('_')]
+    # clean up spaces
+    out_name.replace(' ', '_')
+    return out_name
+
+
+def output_material(mesh_file, material, parse_name):
+    mesh_file.write("MATERIAL {}\n".format(build_material_name(material.name, parse_name)))
+
     mesh_file.write(
         "{:.3f} {:.3f} {:.3f} {:.3f}\n".format(
             material.diffuse_color[0],
@@ -702,13 +718,12 @@ def export_orbiter(config, scene):
 
         mesh_file.write("MATERIALS {}\n".format(len(mat_names)))
         for mName in mat_names:
-            mesh_file.write("{}\n".format(mName.replace(' ', '_')))
+            mesh_file.write("{}\n".format(build_material_name(mName, config.parse_material_name)))
 
         for m in mat_names:
             mat = next((bmat for bmat in bpy.data.materials if bmat.name == m), None)
             if mat:
-                mesh_file.write("MATERIAL {}\n".format(mat.name.replace(' ', '_')))
-                output_material(mesh_file, mat)
+                output_material(mesh_file, mat, config.parse_material_name)
 
         mesh_file.write("TEXTURES {}\n".format(len(tex_names)))
         for tex in tex_names:

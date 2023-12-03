@@ -101,6 +101,6 @@ Import an Orbiter mesh file by selecting 'File - Import - Orbiter Mesh Import' i
 
 A new Blender scene will be created with the name of the mesh file.  By default, axis values are treated as explaned above, with _Y_ and _Z_ coordinates swapped.  Disable this swap by un-checking the Swap YZ Axis option on the import screen.
 
-A node based material will be created for each unique Material + Texture combination found in the mesh file.  The import process will look for textures in the Orbiter\Textures\ folder, so if you have renamed your Orbiter folder the import may fail.
+A node based material will be created for each unique Material + Texture combination found in the mesh file.  The name of the material will be the imported material name plus the texture name plus the scene name.  This naming can be disabled by setting the import option 'Concatenate material name' to false (default true).  Disable this will cause the resulting material names to have a numeric suffix if used with different textures.  The import process will look for textures in the Orbiter\Textures\ folder, so if you have renamed your Orbiter folder the import may fail.  
 
 Normals are imported as 'split', not 'vertex' normals.  Split normals are more versatile and easier to edit.

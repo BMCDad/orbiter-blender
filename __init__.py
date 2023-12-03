@@ -39,11 +39,12 @@
 #               - Fix logging issue to get the object name being exported.
 #   2.1.3       - Export: Add new property 'parse material name'.
 #               - Fix path issue importing under linux.
+#   2.1.4       - Import: Add option to disable concatenation of material name using texture and scene.
 
 bl_info = {
     "name": "Orbiter Mesh Tools",
     "author": "Blake Christensen",
-    "version": (2, 1, 3),
+    "version": (2, 1, 4),
     "blender": (2, 81, 0),
     "location": "",
     "description": "Tools for building Orbiter mesh files.",
@@ -190,6 +191,12 @@ class IMPORT_OT_OrbiterMesh(bpy.types.Operator, ImportHelper):
             description="Swap Y and Z axis values.",
             default=True,
             )
+    
+    orbiter_tools_import_concat_matname: BoolProperty(
+            name="Concatenate material name",
+            description="When true, builds the material name using the object texture and scene to ensure uniqueness.",
+            default=True,
+            )
 
     @classmethod
     def poll(cls, context):
@@ -200,7 +207,8 @@ class IMPORT_OT_OrbiterMesh(bpy.types.Operator, ImportHelper):
 
         with import_tools.OrbiterImportSettings(
                 verbose=self.orbitertools_import_verbose,
-                swap_yz=self.orbitertools_import_swap_yz) as config:
+                swap_yz=self.orbitertools_import_swap_yz,
+                concat_mat=self.orbiter_tools_import_concat_matname) as config:
 
             paths = [os.path.join(self.directory, name.name) for name in self.files]
             if not paths:
@@ -246,6 +254,7 @@ class ORBITERTOOLS_PT_import_mesh(bpy.types.Panel):
 
         layout.prop(operator, "orbitertools_import_verbose")
         layout.prop(operator, "orbitertools_import_swap_yz")
+        layout.prop(operator, "orbiter_tools_import_concat_matname")
 
 
 class OBJECT_PT_OrbiterMaterial(bpy.types.Panel):

@@ -26,10 +26,12 @@ class OrbiterImportSettings:
 
     def __init__(self,
                  verbose=False,
-                 swap_yz=True):
+                 swap_yz=True,
+                 concat_mat=True):
 
         self.verbose = verbose
         self.swap_yz = swap_yz
+        self.concat_mat=concat_mat
         
         self.log_file_path = orbiter_tools.build_file_path(
             orbiter_tools.get_log_folder(), "BlenderTools", ".log")
@@ -347,12 +349,20 @@ def build_mat_textures(
         src_tex = textures[mt[1]][0]  # tuple, [0] is the texture name
         src_tex_file = ""
         if src_tex:   # Material has a texture
-            mat_name = "{}_{}_{}".format(
-                src_mat.name, src_tex.split(".")[0], scene_name)
+            if config.concat_mat:
+                mat_name = "{}_{}_{}".format(
+                    src_mat.name, src_tex.split(".")[0], scene_name)
+            else:
+                mat_name = src_mat.name
+
             src_tex_file = resolve_texture_path(config, orbiter_path, src_tex)
             print("Tex: {}".format(src_tex_file))
         else:
-            mat_name = "{}_{}".format(src_mat.name, scene_name)
+            if config.concat_mat:
+                mat_name = "{}_{}".format(src_mat.name, scene_name)
+            else:
+                mat_name = src_mat.name
+                
         #  Note: Blender will truncate material names at 64, so mat_name
         #  may not be the actual name.  Use new_mat.name in the dictionary.
         new_mat = bpy.data.materials.new(mat_name)

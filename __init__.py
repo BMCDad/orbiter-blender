@@ -40,11 +40,12 @@
 #   2.1.3       - Export: Add new property 'parse material name'.
 #               - Fix path issue importing under linux.
 #   2.1.4       - Import: Add option to disable concatenation of material name using texture and scene.
+#   2.1.5       - Fix bug not ignoring non-exported scenes.
 
 bl_info = {
     "name": "Orbiter Mesh Tools",
     "author": "Blake Christensen",
-    "version": (2, 1, 4),
+    "version": (2, 1, 5),
     "blender": (2, 81, 0),
     "location": "",
     "description": "Tools for building Orbiter mesh files.",
@@ -148,8 +149,9 @@ class OrbiterBuildMesh(bpy.types.Operator):
                     orbiter_tools.export_orbiter(config, active_scene)
                 else:
                     for scene in bpy.data.scenes:
-                        bpy.context.window.scene = scene
-                        orbiter_tools.export_orbiter(config, scene)
+                        if scene.orbiter_create_mesh_file:
+                            bpy.context.window.scene = scene
+                            orbiter_tools.export_orbiter(config, scene)
                     bpy.context.window.scene = active_scene
             except Exception:
                 config.log_line(traceback.format_exc())

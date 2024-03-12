@@ -381,18 +381,32 @@ class MeshGroup:
         start_vert_count = len(temp_mesh.vertices)
         config.log_line("Parsing mesh: {}, Vertices: {}".format(object_eval.name, start_vert_count))
 
+        # If this mesh has a texture file, get that from the Principled BSDF Base Color node.
         has_uv = False
-        if (temp_mesh.uv_layers and 
-                temp_mesh.materials and 
-                temp_mesh.materials[0].use_nodes and 
-                'Image Texture' in temp_mesh.materials[0].node_tree.nodes):
-            self.uv_tex_name_path = temp_mesh.materials[0].node_tree.nodes['Image Texture'].image.filepath
-            self.is_dynamic_texture = temp_mesh.materials[0].orbiter_is_dynamic
-            
-            self.uv_tex_name = get_texture_path(self.uv_tex_name_path)
-
-            has_uv = True
-            config.log_line("Mesh has texture node: {}".format(self.uv_tex_name))
+        first_material = object_eval.material_slots[0].material
+        if (temp_mesh.uv_layers and first_material and first_material.node_tree):
+            base_color_node = first_material.node_tree.nodes.get('Principled BSDF')
+            if base_color_node:
+                if base_color_node.inputs['Base Color'].is_linked:
+                    linked_socket = base_color_node.inputs['Base Color'].links[0].from_socket
+                    if linked_socket.node.type == 'TEX_IMAGE':
+                        image_texture = linked_socket.node.image
+                        if image_texture is not None:
+                            self.uv_tex_name_path = image_texture.filepath
+                            self.is_dynamic_texture = first_material.orbiter_is_dynamic
+                            self.uv_tex_name = get_texture_path(self.uv_tex_name_path)
+                            has_uv = True
+                            config.log_line("Mesh Base Color texture node found: {}".format(self.uv_tex_name))
+                        else:
+                            config.log_line("Principled BSDF base color linked image node not found.")
+                    else:
+                        config.log_line("Principled BSDF base color link is not an image file.")
+                else:
+                    config.log_line("Principled BSDF base color not linked (no image file).")
+            else:
+                config.log_line("Principled BSDF node not found.")
+        else:
+            config.log_line("No UV layer or material found.")
 
         #  The vertex alone is not enough to know the normal used by the current triangle face
         #  corner, for that we also need the polygon it belongs to.  The following lookup is

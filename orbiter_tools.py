@@ -473,6 +473,7 @@ class MeshGroup:
         self.num_vertices = len(self.vertices_dict)
         self.num_faces = len(self.triangles_list)
 
+
 def get_texture_path(tex_path):
     """
     Get the texture path relative to 'textures'.  This assumes the texture
@@ -575,7 +576,7 @@ def build_include(config, scene, groups, texNames):
         if mesh_group.include_vertex_array:
             config.write_to_include(
                 "    const NTVERTEX {}[{}] = {{\n".format(
-                    config.name_pattern_verts.format(mesh_group.name), mesh_group.num_vertices))
+                    config.name_pattern_verts.format(bpy.path.clean_name(mesh_group.name)), mesh_group.num_vertices))
 
         for v_key in sorted(mesh_group.vertices_dict.keys()):
             if mesh_group.include_vertex_array:
@@ -596,14 +597,14 @@ def build_include(config, scene, groups, texNames):
     for idx, group in enumerate(grp_names):
         config.write_to_include(
             '    const UINT {} = {};\n'.format(
-                config.name_pattern_id.format(group), idx))
+                config.name_pattern_id.format(bpy.path.clean_name(group)), idx))
 
     for object in scene.objects:
         if object.orbiter_include_position:
             ov = object.location
             config.write_to_include(
                 '    constexpr VECTOR3 {} = '.format(
-                    config.name_pattern_location.format(object.name)))
+                    config.name_pattern_location.format(bpy.path.clean_name(object.name))))
             # swap y - z
             if config.swap_yz:
                 if scene.orbiter_is_2d_panel:
@@ -624,15 +625,15 @@ def build_include(config, scene, groups, texNames):
                 for vert_idx, vert in enumerate(q_mesh.vertices):
                     ex_vert = Vertex.from_BlenderVertex(vert, object.matrix_world, config.swap_yz, scene.orbiter_is_2d_panel)
                     config.write_to_include(
-                        '    const VECTOR3 {}_QUAD_{} = '.format(object.name, vert_idx))
+                        '    const VECTOR3 {}_QUAD_{} = '.format(bpy.path.clean_name(object.name), vert_idx))
                     config.write_to_include(
                         '    {{{:.4f}, {:.4f}, {:.4f}}};\n'.format(
                             ex_vert.x, ex_vert.y, ex_vert.z))
             object.to_mesh_clear()
 
         if object.orbiter_include_size:
-            config.write_to_include('    const double {}_Width = {};\n'.format(object.name, object.dimensions.x))
-            config.write_to_include('    const double {}_Height = {};\n'.format(object.name, object.dimensions.z))
+            config.write_to_include('    const double {}_Width = {};\n'.format(bpy.path.clean_name(object.name), object.dimensions.x))
+            config.write_to_include('    const double {}_Height = {};\n'.format(bpy.path.clean_name(object.name), object.dimensions.z))
 
         if object.orbiter_include_rect:
             # for now, assuming a principal plane of X-Z
@@ -642,7 +643,7 @@ def build_include(config, scene, groups, texNames):
             rbot = 0 - (object.location.z - object.dimensions.z / 2)
             config.write_to_include(
                         '    constexpr RECT {}_RC = {{{:d}, {:d}, {:d}, {:d}}};\n'.format(
-                            object.name, int(rleft), int(rtop), int(rright), int(rbot)))
+                            bpy.path.clean_name(object.name), int(rleft), int(rtop), int(rright), int(rbot)))
 
                 
     config.write_to_include("\n  }\n")    # close namespace

@@ -42,11 +42,12 @@
 #   2.1.4       - Import: Add option to disable concatenation of material name using texture and scene.
 #   2.1.5       - Fix bug not ignoring non-exported scenes.
 #   2.1.6       - Make getting base color image more robust.
+#   2.1.7       - Use bpy.path.clean_name to clean up Blender names that may not be valid in C++ include.
 
 bl_info = {
     "name": "Orbiter Mesh Tools",
     "author": "Blake Christensen",
-    "version": (2, 1, 6),
+    "version": (2, 1, 7),
     "blender": (2, 81, 0),
     "location": "",
     "description": "Tools for building Orbiter mesh files.",

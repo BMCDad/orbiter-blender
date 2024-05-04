@@ -383,7 +383,7 @@ class MeshGroup:
 
         # If this mesh has a texture file, get that from the Principled BSDF Base Color node.
         has_uv = False
-        first_material = object_eval.material_slots[0].material
+        first_material = object_eval.material_slots[0].material if len(object_eval.material_slots) > 0 else False
         if (temp_mesh.uv_layers and first_material and first_material.node_tree):
             base_color_node = first_material.node_tree.nodes.get('Principled BSDF')
             if base_color_node:

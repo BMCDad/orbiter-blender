@@ -9,7 +9,7 @@ Note: Blender 4.1+ has breaking changes and is not supported by this plugin.  Sp
 
 ## Getting Started
 1.	Under _Releases_ above, click on the _Latest_ release.  This will open the Release page.
-2.  Under _Assets_ click on _Source code (zip)_.  This will download a zip file to your PC.
+2.  Under _Assets_ click on _orbiter-blender-2.zip_.  This will download a zip file to your PC.
 3.	In Blender open *User Preferences* and go to the *Add Ons* tab.
 4.	Select _Install_ at the top of the Preferences window and find the zip file you just download, and click the _Install Add-on_ button.
 5.  Click the check box next to the add on name _Import-Export: Orbiter Mesh Tools_ to enable the add-on.

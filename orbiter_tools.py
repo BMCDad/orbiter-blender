@@ -370,10 +370,6 @@ class MeshGroup:
         temp_mesh.transform(self.matrix_world)
         temp_mesh.calc_loop_triangles()  #  Orbiter needs triangles, so turn all polygons to tris.
         
-        #  Calc split normals here, even if not using auto smooth, this will put
-        #  the normals in the mesh.loops collection where we can read them.
-        temp_mesh.calc_normals_split()
-
         self.vertices_dict = {v.index:Vertex.from_BlenderVertex(v, self.matrix_world, config.swap_yz, scene.orbiter_is_2d_panel) for v in temp_mesh.vertices}
         # for vertex in temp_mesh.vertices:
         #     self.vertices_dict[vertex.index] = Vertex.from_BlenderVertex(vertex, self.matrix_world)

@@ -461,15 +461,6 @@ def import_mesh(config, file_path):
                 idx, group_name, len(verts), len(tris), len(normals), len(uvs)))
         mesh_data = bpy.data.meshes.new(group_name)
         mesh_data.from_pydata(verts, [], tris)
-        # test normals
-        if len(normals) > 0:
-            mesh_data.create_normals_split()
-            for l in mesh_data.loops:
-                l.normal[:] = normals[l.vertex_index]
-
-            mesh_data.normals_split_custom_set_from_vertices(normals)
-            mesh_data.use_auto_smooth = True
-        # end test
 
         if group.tex_index != 0:
             config.log_line("  Adding uvs for textured group: {}".format(idx))

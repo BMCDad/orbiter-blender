@@ -3,7 +3,10 @@
 Orbiter Mesh Tools is a [Blender](https://www.blender.org/) add-on for generating [Orbiter](http://orbit.medphys.ucl.ac.uk/index.html) mesh files.  It will also, optionally, generate a C++ source file for the mesh being created.
 
 ## Compatibility:
-Blender 4.2.x
+Blender 4.2.x (pre-release)
+For Blender 4.0 download the latest 2.1.x version of the tools from Releases.
+
+Note!  I have marked the 2.2.0 (Blender 4.2) version as pre-release.  After further testing I am seeing more issues regarding the handling of normals, which where changed in Blender version 4.1.  You are free to try the release.  If you want the latest stable version use Blender 4.0 with the latest 2.1.x release of the tools.
 
 
 ## Getting Started

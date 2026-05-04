@@ -1,0 +1,16 @@
+schema_version = "1.0.0"
+
+id = "orbiter_mesh_tools"
+version = "2.3.0"
+name = "Orbiter Mesh Tools"
+tagline = "Tools for building Orbiter mesh files."
+maintainer = "Blake Christensen <bmcdad.christensen@gmail.com>"
+type = "add-on"
+
+blender_version_min = "4.5.0"
+
+license = ["SPDX:GPL-3.0-or-later"]
+category = "Import-Export"
+
+[metadata]
+website = ""

@@ -45,18 +45,10 @@
 #   2.1.7       - Use bpy.path.clean_name to clean up Blender names that may not be valid in C++ include.
 #   2.1.8       - Fix material parsing bug.
 #   2.2.0       - Blender 4.2 LTS support.
+#   2.3.0       - Blender 4.5 LTS support.
 
-bl_info = {
-    "name": "Orbiter Mesh Tools",
-    "author": "Blake Christensen",
-    "version": (2, 2, 0),
-    "blender": (4, 2, 0),
-    "location": "",
-    "description": "Tools for building Orbiter mesh files.",
-    "warning": "",
-    "wiki_url": "",
-    "tracker_url": "",
-    "category": "Import-Export"}
+# Update version in blender_manifest.toml
+__version__ = "2.3.0"
 
 import bpy
 import os
@@ -120,7 +112,7 @@ class OrbiterBuildMesh(bpy.types.Operator):
             
             config.log_line("Orbiter Tools Build Log - Date: {}".format(time.asctime()))
             config.log_line("Versions  Blender: {}  Blender Tools: {}".format(
-                    bpy.app.version_string, bl_info["version"]))
+                    bpy.app.version_string, __version__))
             config.log_line(" ")
             config.log_line("Mesh Path: " + config.mesh_path)
             config.log_line("Build Include File: {}".format(config.build_include_file))
@@ -138,7 +130,7 @@ class OrbiterBuildMesh(bpy.types.Operator):
             config.log_line(" ")
             config.write_to_include(
                 "// Auto generated code file.  Blender: {}  Blender Tools: {}\n".format(
-                    bpy.app.version_string, bl_info["version"]))
+                    bpy.app.version_string, __version__))
             config.write_to_include("// Date: {}\n\n\n".format(time.asctime()))
             config.write_to_include('#include "orbitersdk.h"\n\n')
             config.write_to_include('#ifndef __{}_H\n'.format(home_scene.name))
@@ -184,6 +176,7 @@ class IMPORT_OT_OrbiterMesh(bpy.types.Operator, ImportHelper):
             )
     directory: StringProperty(
             subtype='DIR_PATH',
+            options={'PATH_SUPPORTS_BLEND_RELATIVE'},
             )
 
     orbitertools_import_verbose: BoolProperty(
@@ -411,15 +404,15 @@ class OBJECT_PT_OrbiterScene(bpy.types.Panel):
         row.prop(scene, "orbiter_is_2d_panel")
 
 
-classes = {
+classes = [
     OrbiterBuildMesh,
     IMPORT_OT_OrbiterMesh,
     ORBITERTOOLS_PT_import_mesh,
     OBJECT_PT_OrbiterMaterial,
     OBJECT_PT_OrbiterObject,
     OBJECT_PT_OrbiterOutput,
-    OBJECT_PT_OrbiterScene
-}
+    OBJECT_PT_OrbiterScene,
+]
 
 
 # Only needed if you want to add into a dynamic menu
@@ -481,9 +474,11 @@ def register():
     # seems to be the best place to put general settings.
     bpy.types.Scene.orbiter_include_path = bpy.props.StringProperty(
         subtype='FILE_PATH',
+        options={'PATH_SUPPORTS_BLEND_RELATIVE'},
         description="Directory where the include file will be written to.")
     bpy.types.Scene.orbiter_mesh_path = bpy.props.StringProperty(
         subtype='DIR_PATH',
+        options={'PATH_SUPPORTS_BLEND_RELATIVE'},
         description="Directory where the mesh files will be written to.")
     bpy.types.Scene.orbiter_build_include_file = bpy.props.BoolProperty(
         name="Build Include File",
@@ -586,19 +581,28 @@ def register():
 
 
 def unregister():
-    for cls in classes:
+    for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
 
     print("Unregister Orbiter tools.")
+
+    # Object properties (mirrors register order)
     del bpy.types.Object.orbiter_sort_order
+    del bpy.types.Object.orbiter_mesh_flag
     del bpy.types.Object.orbiter_include_position
+    del bpy.types.Object.orbiter_include_quad
+    del bpy.types.Object.orbiter_include_vertex_array
+    del bpy.types.Object.orbiter_include_size
+    del bpy.types.Object.orbiter_include_rect
+
+    # Scene properties (mirrors register order)
     del bpy.types.Scene.orbiter_create_mesh_file
     del bpy.types.Scene.orbiter_scene_namespace
-    del bpy.types.Scene.orbiter_build_include_file
-    del bpy.types.Scene.orbiter_is_2d_panel    
-    del bpy.types.Scene.orbiter_verbose
+    del bpy.types.Scene.orbiter_is_2d_panel
     del bpy.types.Scene.orbiter_include_path
     del bpy.types.Scene.orbiter_mesh_path
+    del bpy.types.Scene.orbiter_build_include_file
+    del bpy.types.Scene.orbiter_verbose
     del bpy.types.Scene.orbiter_outer_namespace
     del bpy.types.Scene.orbiter_location_name_pattern
     del bpy.types.Scene.orbiter_vert_array_name_pattern
@@ -607,16 +611,13 @@ def unregister():
     del bpy.types.Scene.orbiter_swap_yz
     del bpy.types.Scene.orbiter_export_sortmode
     del bpy.types.Scene.orbiter_exclude_hidden_from_render
-    del bpy.types.Scene.orbiter_parse_material_name    
+    del bpy.types.Scene.orbiter_parse_material_name
+
+    # Material properties (mirrors register order)
     del bpy.types.Material.orbiter_ambient_color
     del bpy.types.Material.orbiter_specular_color
     del bpy.types.Material.orbiter_specular_power
     del bpy.types.Material.orbiter_emit_color
-    del bpy.types.Object.orbiter_include_quad
-    del bpy.types.Object.orbiter_include_vertex_array
-    del bpy.types.Object.orbiter_include_size
-    del bpy.types.Object.orbiter_include_rect
-    del bpy.types.Object.orbiter_mesh_flag
     del bpy.types.Material.orbiter_is_dynamic
 
     bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)

@@ -33,6 +33,7 @@ bld/
 # VSCode folder
 .vscode/
 
+.claude/
 
 # Distribution / packaging
 .Python
@@ -131,3 +132,4 @@ venv.bak/
 # mypy
 .mypy_cache/
 push.bat
+orbiter-blender-2.zip

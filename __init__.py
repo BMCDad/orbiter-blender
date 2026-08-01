@@ -46,9 +46,21 @@
 #   2.1.8       - Fix material parsing bug.
 #   2.2.0       - Blender 4.2 LTS support.
 #   2.3.0       - Blender 4.5 LTS support.
+#   2.3.1       - Blender 5.x support.
+#               - Fix manifest tagline rejected by the 5.0 extension validator.
+#               - Export: write the verbose log to the .blend folder (or temp
+#                 folder when unsaved) instead of Blender's working directory.
+#               - Import: avoid the deprecated Material.use_nodes when the new
+#                 material already has a node tree.
+#   2.3.2       - Import: fix crash on meshes not under a 'Meshes' folder.
+#               - Import: resolve texture references that use Windows '\'
+#                 separators, and match folder/file case on Linux and macOS.
+#               - Import: keep texture sub-folders out of material names.
+#   2.3.3       - Import: a missing texture file no longer aborts the entire
+#                 import; the material is created untextured instead.
 
 # Update version in blender_manifest.toml
-__version__ = "2.3.0"
+__version__ = "2.3.3"
 
 import bpy
 import os

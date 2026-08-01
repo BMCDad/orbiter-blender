@@ -282,25 +282,102 @@ def get_tris(group, swap_yz = True):
     return tris
 
 
+def resolve_case_insensitive(base, rel_parts):
+    """
+    Resolve 'rel_parts' under 'base', matching each path component
+    case-insensitively.  Orbiter add-ons are authored on Windows, where
+    case does not matter, so 'Textures/MyVessel/Hull.dds' may really
+    be 'textures/myvessel/hull.dds' on a case-sensitive filesystem.
+    Returns the resolved path, or None if any component is missing.
+    """
+    current = base
+    for part in rel_parts:
+        if not part or part == '.':
+            continue
+
+        direct = os.path.join(current, part)
+        if os.path.exists(direct):
+            current = direct
+            continue
+
+        try:
+            entries = os.listdir(current)
+        except OSError:
+            return None
+
+        lowered = part.lower()
+        match = next((e for e in entries if e.lower() == lowered), None)
+        if match is None:
+            return None
+        current = os.path.join(current, match)
+
+    return current
+
+
+def split_orbiter_path(tex_name):
+    """
+    Split an Orbiter texture reference into path components.  Mesh files are
+    written on Windows and use '\\' as the separator, which is not a separator
+    on Linux/macOS, so normalize it before splitting.
+    """
+    return [p for p in tex_name.replace('\\', '/').split('/') if p]
+
+
 def resolve_texture_path(config, orbiter_path, tex_name):
     """
     Resolve the texture file path.  Textures can be in Orbiter\\Textures,
     or sometimes in Orbiter\\Textures2.  Textures2 is searched first, if not
     found then Textures will be searched.
     """
-    tex2_file = os.path.join(orbiter_path, "Textures2", tex_name)
-    tex_file = os.path.join(orbiter_path, "Textures", tex_name)
-    if os.path.exists(tex2_file):
-        config.log_line("Texture: {}".format(tex2_file))
-        return tex2_file
+    rel_parts = split_orbiter_path(tex_name)
+    attempted = []
 
-    if os.path.exists(tex_file):
-        config.log_line("Texture: {}".format(tex_file))
-        return tex_file
+    for tex_dir in ("Textures2", "Textures"):
+        attempted.append(os.path.join(orbiter_path, tex_dir, *rel_parts))
+        found = resolve_case_insensitive(orbiter_path, [tex_dir] + rel_parts)
+        if found and os.path.isfile(found):
+            config.log_line("Texture: {}".format(found))
+            return found
 
     print("WARN: Texture file not found: {}".format(tex_name))
-    config.log_line("WARN: Missing texture:[{}], [{}]".format(tex2_file, tex_file))
+    config.log_line("WARN: Missing texture:[{}], [{}]".format(*attempted))
     return ""
+
+
+def find_orbiter_root(config, file_path):
+    """
+    Determine the Orbiter root folder for a mesh file, which is the folder
+    holding the 'Meshes' and 'Textures' directories.  Normally the mesh sits
+    in <root>/Meshes/..., but importing a loose .msh from somewhere else
+    should degrade gracefully rather than raise.
+    """
+    p = Path(file_path).resolve()
+    parts = list(p.parts)
+    lowered = [pp.lower() for pp in parts]
+
+    #  Use the last 'Meshes' in the path, so a folder that happens to be
+    #  called 'meshes' higher up does not win over the real one.
+    if 'meshes' in lowered:
+        idx = len(lowered) - 1 - lowered[::-1].index('meshes')
+        return os.path.join(*parts[0:idx])
+
+    #  No 'Meshes' folder: walk up looking for something that has a
+    #  Textures/Textures2 folder next to it.
+    for parent in p.parents:
+        try:
+            entries = {e.lower() for e in os.listdir(parent)}
+        except OSError:
+            continue
+        if 'textures' in entries or 'textures2' in entries:
+            config.log_line("No 'Meshes' folder; using texture root: {}".format(parent))
+            return str(parent)
+
+    #  Last resort: import the geometry and let the textures come up missing.
+    warn = ("WARN: Mesh is not inside an Orbiter folder structure, textures "
+            "will likely not resolve: {}".format(p.parent))
+    print(warn)
+    config.log_line(warn)
+    return str(p.parent)
 
 
 def build_mat_textures(
@@ -350,8 +427,13 @@ def build_mat_textures(
         src_tex_file = ""
         if src_tex:   # Material has a texture
             if config.concat_mat:
+                #  Use just the file stem: Orbiter texture references often
+                #  include a sub-folder ('MyVessel\\hull.dds') which would
+                #  otherwise end up inside the Blender material name.
+                tex_stem = os.path.splitext(
+                    os.path.basename(src_tex.replace('\\', '/')))[0]
                 mat_name = "{}_{}_{}".format(
-                    src_mat.name, src_tex.split(".")[0], scene_name)
+                    src_mat.name, tex_stem, scene_name)
             else:
                 mat_name = src_mat.name
 
@@ -387,14 +469,37 @@ def build_mat_textures(
             new_mat.orbiter_specular_power))
         config.log_line("  emissive: {0:.4}, {0:.4}, {0:.4}, {0:.4}".format(
             *new_mat.orbiter_emit_color))
-        if src_tex:
+        if src_tex and src_tex_file:
             config.log_line("  texture node image: {}".format(src_tex_file))
-            new_mat.use_nodes = True
-            bsdf = new_mat.node_tree.nodes["Principled BSDF"]
-            texImage = new_mat.node_tree.nodes.new('ShaderNodeTexImage')
-            texImage.image = bpy.data.images.load(src_tex_file)
-            new_mat.node_tree.links.new(
-                bsdf.inputs['Base Color'], texImage.outputs['Color'])
+            #  Blender 5.0 gives new materials a node tree already, and
+            #  'use_nodes' is deprecated (slated for removal in 6.0).
+            #  Only touch it when the node tree is actually missing (4.5).
+            if not new_mat.node_tree:
+                new_mat.use_nodes = True
+
+            try:
+                image = bpy.data.images.load(src_tex_file)
+            except RuntimeError as error:
+                image = None
+                warn = "WARN: Could not load texture [{}]: {}".format(
+                    src_tex_file, error)
+                print(warn)
+                config.log_line(warn)
+
+            if image is not None:
+                bsdf = new_mat.node_tree.nodes["Principled BSDF"]
+                texImage = new_mat.node_tree.nodes.new('ShaderNodeTexImage')
+                texImage.image = image
+                new_mat.node_tree.links.new(
+                    bsdf.inputs['Base Color'], texImage.outputs['Color'])
+        elif src_tex:
+            #  Texture named in the mesh but not found on disk.  Import the
+            #  geometry with an untextured material rather than failing the
+            #  whole mesh.
+            warn = "WARN: Material '{}' left untextured, missing: {}".format(
+                new_mat.name, src_tex)
+            print(warn)
+            config.log_line(warn)
 
         dict_mat[mt] = new_mat.name     # dict: (tuple) -> mat name.
     config.log_line("Finished building {} materials.".format(len(dict_mat)))
@@ -435,11 +540,9 @@ def import_mesh(config, file_path):
     config.log_line("Target scene: {}".format(scene_name))
 
     # find the Orbiter path
-    p = Path(file_path)
-    up = [pp.lower() for pp in p.parts]
-    msh_index = up.index('meshes')
-    orbiter_path = os.path.join(*p.parts[0:msh_index])
+    orbiter_path = find_orbiter_root(config, file_path)
     print("Orbiter path: {}".format(orbiter_path))
+    config.log_line("Orbiter path: {}".format(orbiter_path))
 
     groups, materials, textures = read_mesh_file(config, file_path)
     mat_dict = build_mat_textures(

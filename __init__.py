@@ -52,9 +52,13 @@
 #                 folder when unsaved) instead of Blender's working directory.
 #               - Import: avoid the deprecated Material.use_nodes when the new
 #                 material already has a node tree.
+#   2.3.2       - Import: fix crash on meshes not under a 'Meshes' folder.
+#               - Import: resolve texture references that use Windows '\'
+#                 separators, and match folder/file case on Linux and macOS.
+#               - Import: keep texture sub-folders out of material names.
 
 # Update version in blender_manifest.toml
-__version__ = "2.3.1"
+__version__ = "2.3.2"
 
 import bpy
 import os

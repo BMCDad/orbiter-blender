@@ -56,9 +56,11 @@
 #               - Import: resolve texture references that use Windows '\'
 #                 separators, and match folder/file case on Linux and macOS.
 #               - Import: keep texture sub-folders out of material names.
+#   2.3.3       - Import: a missing texture file no longer aborts the entire
+#                 import; the material is created untextured instead.
 
 # Update version in blender_manifest.toml
-__version__ = "2.3.2"
+__version__ = "2.3.3"
 
 import bpy
 import os

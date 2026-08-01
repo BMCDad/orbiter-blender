@@ -469,18 +469,37 @@ def build_mat_textures(
             new_mat.orbiter_specular_power))
         config.log_line("  emissive: {0:.4}, {0:.4}, {0:.4}, {0:.4}".format(
             *new_mat.orbiter_emit_color))
-        if src_tex:
+        if src_tex and src_tex_file:
             config.log_line("  texture node image: {}".format(src_tex_file))
             #  Blender 5.0 gives new materials a node tree already, and
             #  'use_nodes' is deprecated (slated for removal in 6.0).
             #  Only touch it when the node tree is actually missing (4.5).
             if not new_mat.node_tree:
                 new_mat.use_nodes = True
-            bsdf = new_mat.node_tree.nodes["Principled BSDF"]
-            texImage = new_mat.node_tree.nodes.new('ShaderNodeTexImage')
-            texImage.image = bpy.data.images.load(src_tex_file)
-            new_mat.node_tree.links.new(
-                bsdf.inputs['Base Color'], texImage.outputs['Color'])
+
+            try:
+                image = bpy.data.images.load(src_tex_file)
+            except RuntimeError as error:
+                image = None
+                warn = "WARN: Could not load texture [{}]: {}".format(
+                    src_tex_file, error)
+                print(warn)
+                config.log_line(warn)
+
+            if image is not None:
+                bsdf = new_mat.node_tree.nodes["Principled BSDF"]
+                texImage = new_mat.node_tree.nodes.new('ShaderNodeTexImage')
+                texImage.image = image
+                new_mat.node_tree.links.new(
+                    bsdf.inputs['Base Color'], texImage.outputs['Color'])
+        elif src_tex:
+            #  Texture named in the mesh but not found on disk.  Import the
+            #  geometry with an untextured material rather than failing the
+            #  whole mesh.
+            warn = "WARN: Material '{}' left untextured, missing: {}".format(
+                new_mat.name, src_tex)
+            print(warn)
+            config.log_line(warn)
 
         dict_mat[mt] = new_mat.name     # dict: (tuple) -> mat name.
     config.log_line("Finished building {} materials.".format(len(dict_mat)))

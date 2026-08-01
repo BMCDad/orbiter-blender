@@ -389,7 +389,11 @@ def build_mat_textures(
             *new_mat.orbiter_emit_color))
         if src_tex:
             config.log_line("  texture node image: {}".format(src_tex_file))
-            new_mat.use_nodes = True
+            #  Blender 5.0 gives new materials a node tree already, and
+            #  'use_nodes' is deprecated (slated for removal in 6.0).
+            #  Only touch it when the node tree is actually missing (4.5).
+            if not new_mat.node_tree:
+                new_mat.use_nodes = True
             bsdf = new_mat.node_tree.nodes["Principled BSDF"]
             texImage = new_mat.node_tree.nodes.new('ShaderNodeTexImage')
             texImage.image = bpy.data.images.load(src_tex_file)

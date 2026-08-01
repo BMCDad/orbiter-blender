@@ -46,9 +46,15 @@
 #   2.1.8       - Fix material parsing bug.
 #   2.2.0       - Blender 4.2 LTS support.
 #   2.3.0       - Blender 4.5 LTS support.
+#   2.3.1       - Blender 5.x support.
+#               - Fix manifest tagline rejected by the 5.0 extension validator.
+#               - Export: write the verbose log to the .blend folder (or temp
+#                 folder when unsaved) instead of Blender's working directory.
+#               - Import: avoid the deprecated Material.use_nodes when the new
+#                 material already has a node tree.
 
 # Update version in blender_manifest.toml
-__version__ = "2.3.0"
+__version__ = "2.3.1"
 
 import bpy
 import os

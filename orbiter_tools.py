@@ -53,9 +53,12 @@ class OrbiterBuildSettings:
         self.name_pattern_location = name_pattern_location
         self.name_pattern_verts = name_pattern_verts
         self.name_pattern_id = name_pattern_id
+        #  Use the same resolution as the importer: the .blend folder when
+        #  the file is saved, otherwise the temp folder.  Previously an
+        #  unsaved .blend produced an empty path and the log landed in
+        #  Blender's working directory (or failed to open).
         self.log_file_path = build_file_path(
-            os.path.dirname(bpy.data.filepath),
-            "BlenderTools", ".log")
+            get_log_folder(), "BlenderTools", ".log")
         if self.verbose:
             try:
                 self.log_file = open(self.log_file_path, 'w')
